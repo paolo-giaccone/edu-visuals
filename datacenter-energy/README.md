@@ -1,3 +1,8 @@
+---
+layout: default
+title: Lecture Notes
+---
+
 # Activity 
 
 ## DFVS in servers
