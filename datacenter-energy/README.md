@@ -10,7 +10,7 @@ title: Lecture Notes
 ### STEP 1
 
 Open the [dashboard](https://paolo-giaccone.github.io/edu-visuals/datacenter-energy/cmos_energy_tradeoff.html) and check the following settings (they should default)
-- Workload $N = 5 \times 10^9$ cycles
+- Task workload $N = 5 \times 10^9$ cycles
 - Threshold voltage $V_{th}=0.35~V$
 - Leakage current $I_{leak}=0.45~A$
 
@@ -36,8 +36,45 @@ Now move the slides of the supply voltage to verify that the data in the followi
 
 Did you experience a reduction in task energy? Why?
 
-> No
+> No, due to the static power
 
+**Q4:** Consider scenario S4 and modify *only* supply voltage to reduce as much as possible the task energy. Let S5 be the new scenario. Fill the following:
+
+ | Scenario | Supply voltage $V$ | Clock Frequency $f$ | Execution time | Task energy |
+ | :---: | :---: | :---: | :---: | :---: |
+ | S5 | ... V | ... GHz | 5.0 s | ... J |
+
+
+Did you experience a reduction in task energy with respect to S3 and S4? Why?
+> 0.58V, 1 GHz, 3.32J
+> reduced with respect to S4 (40%)
+> reduced with respect to S1 (46%)
+
+**Q5 (Min energy policy):** Consider scenario S1 and modify *only* the clock frequency to minimize the overall task energy.
+Let S6 be the new scenario. Fill the following:
+
+| Scenario | Supply voltage $V$ | Clock Frequency $f$ | Execution time | Task energy |
+ | :---: | :---: | :---: | :---: | :---: |
+ | S6 | 1.00 V | ... GHz | ... s | ... J |
+> 2.35GHz, 2.13s, 6.96J
+> This almost the same as S1
+
+**Q6 (Min execution time policy):**  Consider scenario S1 and modify *only* the clock frequency and the supply voltage to minimize the task execution time.
+Let S7 be the new scenario. Fill the following:
+
+| Scenario | Supply voltage $V$ | Clock Frequency $f$ | Execution time | Task energy |
+| :---: | :---: | :---: | :---: | :---: |
+| S7 | ... V | ... GHz | ... s | ... J |
+
+Compare the execution time and the task energy with respect to S1.
+> 3.25GHz, 1.54s, 13.62J
+
+**Q5:** Summarize the results in the following table:
+
+| Scenario | Supply voltage $V$ | Clock Frequency $f$ | Execution time | Task energy |
+| :--- | :---: | :---: | :---: | :---: |
+| S6 (Min energy policy) | ... V | ... GHz | ... s | ... J |
+| S7 (Min execution time policy)| ... V | ... GHz | ... s | ... J |
 
 
 
