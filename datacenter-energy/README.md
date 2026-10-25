@@ -1,4 +1,4 @@
-# Energy in practise 
+# Hands-on session  
 
 ## Activity 1. DFVS in servers
 
@@ -80,6 +80,11 @@ Let S8 be the new scenario. Fill the following:
 | S8 (Min energy policy) | ... V | ... GHz | ... s | ... J |
 
 Compare the different energy vs execution time tradeoff.
+
+## Activity 2.
+
+Open the [dashboard](https://paolo-giaccone.github.io/edu-visuals/datacenter-energy/datacenter_power.html) and check the following settings (they should default)
+- xxx
 
 
 
