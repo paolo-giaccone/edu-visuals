@@ -19,12 +19,12 @@ Now move the slides of the supply voltage to verify that the data in the followi
  | Scenario | Supply voltage $V$ | Clock Frequency $f$ | Execution time | Task energy |
  | :---: | :---: | :---: | :---: | :---: |
  | S1 | 1.00 V | 2.20 GHz | 2.27 s | 7.2 J |
- | S2 | 1.00 V | 2.60 GHz | *not working* | — |
- | S3 | 0.75 V | 2.20 GHz | *not working* | — |
+ | S2 | 1.00 V | 2.60 GHz | *unfeasible* | — |
+ | S3 | 0.75 V | 2.20 GHz | *unfeasible* | — |
 
-**Q1:** Why scenario S2 is not working?
+**Q1:** Why scenario S2 is unfeasible?
 
-**Q2:** Why scenario S3 is not working?
+**Q2:** Why scenario S3 is unfeasible?
 
 **Q3:** Consider scenario S1 and modify *only* clock frequency to obtain an execution time equal to 5.0 s. Let S4 be the new scenario. Fill the following:
 
@@ -50,7 +50,7 @@ Did you experience a reduction in task energy with respect to S3 and S4? Why?
 > reduced with respect to S4 (40%)
 > reduced with respect to S1 (46%)
 
-**Q5 (Min energy policy):** Consider scenario S1 and modify *only* the clock frequency to minimize the overall task energy.
+**Q5:** Consider scenario S1 and modify *only* the clock frequency to minimize the overall task energy.
 Let S6 be the new scenario. Fill the following:
 
 | Scenario | Supply voltage $V$ | Clock Frequency $f$ | Execution time | Task energy |
@@ -69,12 +69,24 @@ Let S7 be the new scenario. Fill the following:
 Compare the execution time and the task energy with respect to S1.
 > 3.25GHz, 1.54s, 13.62J
 
-**Q5:** Summarize the results in the following table:
+**Q7 (Min energy policy):** Consider scenario S1 and modify *only* the clock frequency and the supply voltage to minimize the task execution time across . (Hint: Use voltage around 0.4-0.5 V)
+
+Let S8 be the new scenario. Fill the following:
+
+| Scenario | Supply voltage $V$ | Clock Frequency $f$ | Execution time | Task energy |
+| :---: | :---: | :---: | :---: | :---: |
+| S8 | ... V | ... GHz | ... s | ... J |
+
+> 0.48V, 0.45 GHz, 11s, 3.78J
+
+**Q8:** Summarize the results in the following table:
 
 | Scenario | Supply voltage $V$ | Clock Frequency $f$ | Execution time | Task energy |
 | :--- | :---: | :---: | :---: | :---: |
-| S6 (Min energy policy) | ... V | ... GHz | ... s | ... J |
 | S7 (Min execution time policy)| ... V | ... GHz | ... s | ... J |
+| S8 (Min energy policy) | ... V | ... GHz | ... s | ... J |
+
+Compare the different energy vs execution time tradeoff.
 
 
 
