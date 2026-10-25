@@ -7,7 +7,7 @@ title: Lecture Notes
 
 ## DFVS in servers
 
-1. Open the [dashboard](cmos_energy_tradeoff.html) and check the following
+1. Open the [dashboard](https://paolo-giaccone.github.io/edu-visuals/datacenter-energy/cmos_energy_tradeoff.html) and check the following
 > ### Workload cycles $N = 5 \times 10^9$
 >
 > | Scenario | Supply voltage $V$ | Clock Frequency $f$ | Execution time | Task energy |
