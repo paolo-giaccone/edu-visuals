@@ -12,6 +12,7 @@ title: Lecture Notes
 - Threshold voltage $V_{th}=0.35~V$
 - Leakage current $I_{leak}=0.45~A$
 
+
  | Scenario | Supply voltage $V$ | Clock Frequency $f$ | Execution time | Task energy |
  | :---: | :---: | :---: | :---: | :---: |
  | S1 | 1.00 V | 2.20 GHz | 2.27 s | 7.2 J |
