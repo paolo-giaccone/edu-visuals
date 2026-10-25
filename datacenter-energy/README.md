@@ -1,13 +1,6 @@
----
-layout: default
-title: Lecture Notes
----
+# Energy in practise 
 
-# Activity 
-
-## DFVS in servers
-
-### STEP 1
+## Activity 1. DFVS in servers
 
 Open the [dashboard](https://paolo-giaccone.github.io/edu-visuals/datacenter-energy/cmos_energy_tradeoff.html) and check the following settings (they should default)
 - Task workload $N = 5 \times 10^9$ cycles
