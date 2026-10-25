@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-950 text-slate-100">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CMOS Energy & Timing Constraint Simulator</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Chart.js for smooth graphs -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- MathJax for rendering LaTeX equations -->
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            },
+            svg: { fontCache: 'global' }
+        };
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+        input[type=range] { accent-color: #3b82f6; }
+    </style>
+</head>
+<body class="h-full font-sans antialiased flex flex-col justify-between selection:bg-blue-500 selection:text-white">
+
+    <!-- Header -->
+    <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div class="flex items-center space-x-3">
+                <div class="p-2.5 bg-blue-600/20 text-blue-400 border border-blue-500/30 rounded-xl">
+                    <i class="fa-solid fa-microchip text-2xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold text-slate-50 tracking-tight">CMOS Energy & Delay Constraints Explorer</h1>
+                    <p class="text-xs text-slate-400">VLSI Architecture • Timing Violations, Dynamic/Static Energy & Propagation Delay Limits</p>
+                </div>
+            </div>
+            
+            <div class="flex flex-wrap items-center gap-2 text-xs bg-slate-800/80 border border-slate-700/60 rounded-lg p-2 self-start md:self-auto">
+                <span class="px-2 py-0.5 rounded bg-slate-950 font-mono text-blue-300 border border-slate-800">$T_{\text{exec}} = \frac{N}{f}$</span>
+                <span class="px-2 py-0.5 rounded bg-slate-950 font-mono text-emerald-300 border border-slate-800">$E_{\text{task}} = \alpha C V^2 N + V I_{\text{leak}} \frac{N}{f}$</span>
+                <span class="px-2 py-0.5 rounded bg-slate-950 font-mono text-amber-300 border border-slate-800">$f_{\text{max}} \propto \frac{(V - V_{\text{th}})^\alpha}{V}$</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-grow w-full grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- LEFT COLUMN: Controls & Parameters (4 cols) -->
+        <div class="lg:col-span-4 flex flex-col gap-6">
+
+            <!-- Dynamic State Badge -->
+            <div id="statusBadge" class="p-4 rounded-xl border transition-all duration-300 flex items-start space-x-3 bg-emerald-950/40 border-emerald-800 text-emerald-300">
+                <div id="statusIcon" class="p-2 rounded-lg bg-emerald-900/60 border border-emerald-700/50">
+                    <i class="fa-solid fa-shield-halved text-xl"></i>
+                </div>
+                <div>
+                    <span id="statusTag" class="text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded bg-emerald-900/80 text-emerald-200 border border-emerald-700">Safe / Stable</span>
+                    <h3 id="statusTitle" class="font-bold text-sm text-emerald-200 mt-1">Normal Operation ($f \le f_{\text{max}}$)</h3>
+                    <p id="statusDesc" class="text-xs text-slate-300 mt-1 leading-relaxed">
+                        Frequency is within stable propagation delay bounds. Signals propagate cleanly before the clock edge.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Operating Presets -->
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-lg">
+                <h2 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3 flex items-center justify-between">
+                    <span><i class="fa-solid fa-sliders text-blue-400 mr-2"></i>Test Scenarios</span>
+                </h2>
+                <div class="grid grid-cols-2 gap-2">
+                    <button onclick="applyPreset('safe')" class="text-left px-3 py-2 rounded-lg bg-slate-800/80 hover:bg-slate-700 border border-slate-700/60 text-xs font-medium transition text-slate-200">
+                        <span class="text-emerald-400 font-semibold block">Safe Nominal</span>
+                        <span class="text-[10px] text-slate-400">1.00V @ 2.2 GHz</span>
+                    </button>
+                    <button onclick="applyPreset('violation')" class="text-left px-3 py-2 rounded-lg bg-slate-800/80 hover:bg-slate-700 border border-slate-700/60 text-xs font-medium transition text-slate-200">
+                        <span class="text-rose-400 font-semibold block">Timing Violation</span>
+                        <span class="text-[10px] text-slate-400">0.70V @ 2.5 GHz</span>
+                    </button>
+                    <button onclick="applyPreset('undervolt')" class="text-left px-3 py-2 rounded-lg bg-slate-800/80 hover:bg-slate-700 border border-slate-700/60 text-xs font-medium transition text-slate-200">
+                        <span class="text-amber-400 font-semibold block">Dead Zone ($V \le V_{\text{th}}$)</span>
+                        <span class="text-[10px] text-slate-400">0.30V @ 0.5 GHz</span>
+                    </button>
+                    <button onclick="applyPreset('lowpower')" class="text-left px-3 py-2 rounded-lg bg-slate-800/80 hover:bg-slate-700 border border-slate-700/60 text-xs font-medium transition text-slate-200">
+                        <span class="text-cyan-400 font-semibold block">Optimal DVFS</span>
+                        <span class="text-[10px] text-slate-400">0.75V @ 1.2 GHz</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Slider Parameters Panel -->
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-lg space-y-4">
+                <h2 class="text-xs font-bold uppercase tracking-wider text-slate-400 border-b border-slate-800 pb-2">
+                    <i class="fa-solid fa-gears text-blue-400 mr-2"></i>Operating Parameters
+                </h2>
+
+                <!-- Voltage Slider -->
+                <div class="space-y-1">
+                    <div class="flex justify-between items-center text-xs">
+                        <label for="voltage" class="font-medium text-slate-200">Supply Voltage ($V$)</label>
+                        <span class="font-mono text-blue-400 font-bold bg-blue-950/80 px-2 py-0.5 border border-blue-800 rounded" id="voltageVal">1.00 V</span>
+                    </div>
+                    <input type="range" id="voltage" min="0.20" max="1.45" step="0.01" value="1.00" class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer">
+                    <div class="flex justify-between text-[10px] text-slate-500 font-mono">
+                        <span>0.20V</span>
+                        <span>0.80V</span>
+                        <span>1.45V</span>
+                    </div>
+                </div>
+
+                <!-- Frequency Slider -->
+                <div class="space-y-1">
+                    <div class="flex justify-between items-center text-xs">
+                        <label for="frequency" class="font-medium text-slate-200">Clock Frequency ($f$)</label>
+                        <span class="font-mono text-indigo-400 font-bold bg-indigo-950/80 px-2 py-0.5 border border-indigo-800 rounded" id="frequencyVal">2.20 GHz</span>
+                    </div>
+                    <input type="range" id="frequency" min="0.2" max="3.8" step="0.05" value="2.20" class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer">
+                    <div class="flex justify-between text-[10px] text-slate-500 font-mono">
+                        <span>0.2 GHz</span>
+                        <span>2.0 GHz</span>
+                        <span>3.8 GHz</span>
+                    </div>
+                </div>
+
+                <!-- Workload Cycles Slider -->
+                <div class="space-y-1 pt-2 border-t border-slate-800/80">
+                    <div class="flex justify-between items-center text-xs">
+                        <label for="cycles" class="font-medium text-slate-300">Workload Cycles ($N$)</label>
+                        <span class="font-mono text-emerald-400 font-bold bg-emerald-950/80 px-2 py-0.5 border border-emerald-800 rounded" id="cyclesVal">2.50 × 10⁹</span>
+                    </div>
+                    <input type="range" id="cycles" min="0.5" max="10.0" step="0.5" value="2.5" class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer">
+                </div>
+
+                <!-- Advanced Physical Technology Parameters -->
+                <div class="space-y-3 pt-3 border-t border-slate-800">
+                    <span class="text-xs font-semibold text-slate-300 block">Technology & Physical Constants</span>
+                    
+                    <!-- Threshold Voltage Vth Slider -->
+                    <div class="space-y-1">
+                        <div class="flex justify-between items-center text-xs">
+                            <label for="vth" class="text-slate-400">Threshold Voltage ($V_{\text{th}}$)</label>
+                            <span class="font-mono text-amber-400 font-semibold" id="vthVal">0.35 V</span>
+                        </div>
+                        <input type="range" id="vth" min="0.15" max="0.50" step="0.01" value="0.35" class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer">
+                    </div>
+
+                    <!-- Leakage Current Slider -->
+                    <div class="space-y-1">
+                        <div class="flex justify-between items-center text-xs">
+                            <label for="ileak" class="text-slate-400">Leakage Current ($I_{\text{leak}}$)</label>
+                            <span class="font-mono text-rose-400 font-semibold" id="ileakVal">0.45 A</span>
+                        </div>
+                        <input type="range" id="ileak" min="0.05" max="1.50" step="0.05" value="0.45" class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer">
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- RIGHT COLUMN: Metrics Dashboard & Interactive Charts (8 cols) -->
+        <div class="lg:col-span-8 flex flex-col gap-6">
+
+            <!-- Performance Metrics Row -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+
+                <!-- Metric 1: Execution Time -->
+                <div class="bg-slate-900 border border-slate-800 rounded-xl p-3.5 flex flex-col justify-between shadow-md">
+                    <div class="text-slate-400 text-xs font-semibold flex items-center justify-between">
+                        <span>Execution Time</span>
+                        <i class="fa-regular fa-clock text-blue-400"></i>
+                    </div>
+                    <div class="mt-2">
+                        <div class="text-xl font-extrabold text-slate-100 font-mono" id="metricTexec">1.14 s</div>
+                        <div class="text-[10px] text-slate-500 mt-1 font-mono">$T_{\text{exec}} = N / f$</div>
+                    </div>
+                </div>
+
+                <!-- Metric 2: Max Supported Frequency -->
+                <div class="bg-slate-900 border border-slate-800 rounded-xl p-3.5 flex flex-col justify-between shadow-md">
+                    <div class="text-slate-400 text-xs font-semibold flex items-center justify-between">
+                        <span>Max Allowed $f_{\text{max}}$</span>
+                        <i class="fa-solid fa-gauge-high text-amber-400"></i>
+                    </div>
+                    <div class="mt-2">
+                        <div class="text-xl font-extrabold text-amber-400 font-mono" id="metricFmax">2.61 GHz</div>
+                        <div class="text-[10px] text-slate-500 mt-1 font-mono">Max $f$ at current $V$</div>
+                    </div>
+                </div>
+
+                <!-- Metric 3: Propagation Delay -->
+                <div class="bg-slate-900 border border-slate-800 rounded-xl p-3.5 flex flex-col justify-between shadow-md">
+                    <div class="text-slate-400 text-xs font-semibold flex items-center justify-between">
+                        <span>Gate Delay $t_{\text{delay}}$</span>
+                        <i class="fa-solid fa-wave-square text-cyan-400"></i>
+                    </div>
+                    <div class="mt-2">
+                        <div class="text-xl font-extrabold text-cyan-400 font-mono" id="metricTdelay">383 ps</div>
+                        <div class="text-[10px] text-slate-500 mt-1 font-mono">$\propto V / (V - V_{\text{th}})^\alpha$</div>
+                    </div>
+                </div>
+
+                <!-- Metric 4: Total Energy -->
+                <div id="energyMetricBox" class="bg-slate-900 border border-slate-800 rounded-xl p-3.5 flex flex-col justify-between shadow-md">
+                    <div class="text-slate-300 text-xs font-semibold flex items-center justify-between">
+                        <span>Total Energy</span>
+                        <i class="fa-solid fa-battery-three-quarters text-emerald-400"></i>
+                    </div>
+                    <div class="mt-2">
+                        <div class="text-xl font-extrabold text-emerald-400 font-mono" id="metricEtotal">3.51 J</div>
+                        <div class="text-[10px] text-slate-500 mt-1 font-mono">$E_{\text{dyn}} + E_{\text{stat}}$</div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Chart Row 1: Voltage vs Max Frequency Constraint Plane -->
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-lg flex flex-col">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-2 border-b border-slate-800 gap-2">
+                    <div>
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-200">
+                            Supply Voltage ($V$) vs. Maximum Frequency Bounds $f_{\text{max}}(V)$
+                        </h3>
+                        <p class="text-[11px] text-slate-400">Visualizing stable, overclocked (timing violation), and undervolted dead zones</p>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-3 text-[10px] font-medium">
+                        <div class="flex items-center space-x-1">
+                            <span class="w-2.5 h-2.5 rounded-sm bg-emerald-500/30 border border-emerald-500 inline-block"></span>
+                            <span class="text-slate-300">Stable Region</span>
+                        </div>
+                        <div class="flex items-center space-x-1">
+                            <span class="w-2.5 h-2.5 rounded-sm bg-rose-500/30 border border-rose-500 inline-block"></span>
+                            <span class="text-slate-300">Timing Violation</span>
+                        </div>
+                        <div class="flex items-center space-x-1">
+                            <span class="w-2.5 h-2.5 rounded-sm bg-amber-500/30 border border-amber-500 inline-block"></span>
+                            <span class="text-slate-300">Dead Zone ($V \le V_{\text{th}}$)</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="relative min-h-[260px] mt-3">
+                    <canvas id="fmaxChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Visualization Row 2: Energy Breakdown & Trade-off Space -->
+            <div class="grid grid-cols-1 md:grid-cols-12 gap-6">
+
+                <!-- Donut Chart: Energy Component Breakdown (5 cols) -->
+                <div class="md:col-span-5 bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col shadow-lg">
+                    <div class="flex items-center justify-between mb-2">
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300">Energy Breakdown</h3>
+                        <span class="text-[10px] px-2 py-0.5 rounded bg-slate-800 text-slate-400 font-mono" id="powerRatioText">Dyn: 85% | Stat: 15%</span>
+                    </div>
+                    <div class="relative flex-grow flex items-center justify-center p-2 min-h-[200px]">
+                        <canvas id="energyDonutChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Pareto Line Chart: Time vs Total Energy Curve (7 cols) -->
+                <div class="md:col-span-7 bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col shadow-lg">
+                    <div class="flex items-center justify-between mb-2">
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300">
+                            Tradeoff: Time ($T_{\text{exec}}$) vs Energy ($E_{\text{task}}$)
+                        </h3>
+                        <span class="text-[10px] text-slate-400 font-mono">(at $V = <span id="chartFixedV">1.00V</span>)</span>
+                    </div>
+                    <div class="relative flex-grow min-h-[200px]">
+                        <canvas id="paretoChart"></canvas>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Mathematical & VLSI Architecture Insights -->
+            <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-lg text-xs leading-relaxed space-y-2">
+                <h3 class="font-bold text-slate-200 uppercase tracking-wider text-[11px] flex items-center text-blue-400">
+                    <i class="fa-solid fa-book-bookmark mr-2"></i> Beamer Model Connections & Timing Rules
+                </h3>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-slate-300 pt-1">
+                    <div class="bg-slate-950/60 p-2.5 rounded-lg border border-slate-800">
+                        <strong class="text-slate-100 block mb-1">1. Propagation Delay ($t_{\text{delay}}$)</strong>
+                        $t_{\text{delay}} \propto \frac{C \cdot V}{(V - V_{\text{th}})^\alpha}$. Lowering supply voltage $V$ reduces signal drive current, drastically increasing transistor propagation delay.
+                    </div>
+                    <div class="bg-slate-950/60 p-2.5 rounded-lg border border-slate-800">
+                        <strong class="text-slate-100 block mb-1">2. Timing Violation ($f > f_{\text{max}}$)</strong>
+                        If $f > \frac{1}{t_{\text{delay}}}$, signals do not stabilize before the clock sampling edge, triggering setup time violations and calculation errors.
+                    </div>
+                    <div class="bg-slate-950/60 p-2.5 rounded-lg border border-slate-800">
+                        <strong class="text-slate-100 block mb-1">3. Energy Trade-off Rule</strong>
+                        $E_{\text{dyn}} = \alpha C V^2 N$ is independent of $f$. Lowering $f$ saves power, but increases execution time $T_{\text{exec}}$, causing static leakage energy ($V I_{\text{leak}} T_{\text{exec}}$) to rise!
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-slate-800 bg-slate-900/60 py-3 text-center text-xs text-slate-500">
+        CMOS Energy & Operating Bounds Explorer • VLSI & Computer Architecture Education Model
+    </footer>
+
+    <!-- JavaScript Logic & Charting -->
+    <script>
+        // Constants & Scaling Parameters
+        const ALPHA_C = 1.20e-9;   // Effective Capacitance * Activity Factor (F)
+        const ALPHA_DELAY = 1.3;   // Velocity saturation exponent (alpha-power law)
+        const K_DELAY = 2.4e-10;   // Scaling constant for max frequency derivation
+
+        // UI DOM Elements
+        const sliderV = document.getElementById('voltage');
+        const sliderF = document.getElementById('frequency');
+        const sliderN = document.getElementById('cycles');
+        const sliderVth = document.getElementById('vth');
+        const sliderIleak = document.getElementById('ileak');
+
+        const valV = document.getElementById('voltageVal');
+        const valF = document.getElementById('frequencyVal');
+        const valN = document.getElementById('cyclesVal');
+        const valVth = document.getElementById('vthVal');
+        const valIleak = document.getElementById('ileakVal');
+
+        const metricTexec = document.getElementById('metricTexec');
+        const metricFmax = document.getElementById('metricFmax');
+        const metricTdelay = document.getElementById('metricTdelay');
+        const metricEtotal = document.getElementById('metricEtotal');
+
+        const chartFixedVBox = document.getElementById('chartFixedV');
+        const powerRatioText = document.getElementById('powerRatioText');
+
+        // Status Badge UI Elements
+        const statusBadge = document.getElementById('statusBadge');
+        const statusIcon = document.getElementById('statusIcon');
+        const statusTag = document.getElementById('statusTag');
+        const statusTitle = document.getElementById('statusTitle');
+        const statusDesc = document.getElementById('statusDesc');
+
+        // Chart instances
+        let fmaxChart, donutChart, paretoChart;
+
+        // Initialize on window load
+        window.addEventListener('load', () => {
+            initFmaxChart();
+            initDonutChart();
+            initParetoChart();
+            updateSimulation();
+        });
+
+        // Attach Slider Listeners
+        [sliderV, sliderF, sliderN, sliderVth, sliderIleak].forEach(s => s.addEventListener('input', updateSimulation));
+
+        function applyPreset(type) {
+            if (type === 'safe') {
+                sliderV.value = 1.00;
+                sliderF.value = 2.20;
+            } else if (type === 'violation') {
+                sliderV.value = 0.70;
+                sliderF.value = 2.50;
+            } else if (type === 'undervolt') {
+                sliderV.value = 0.30;
+                sliderF.value = 0.50;
+            } else if (type === 'lowpower') {
+                sliderV.value = 0.75;
+                sliderF.value = 1.20;
+            }
+            updateSimulation();
+        }
+
+        // Calculate Max Frequency f_max(V) based on Alpha-power CMOS Delay Law
+        function getMaxFrequency(V, Vth) {
+            if (V <= Vth) return 0.0;
+            const f_max_GHz = (Math.pow(V - Vth, ALPHA_DELAY) / V) / K_DELAY / 1e9;
+            return f_max_GHz;
+        }
+
+        function updateSimulation() {
+            const V = parseFloat(sliderV.value);
+            const f_GHz = parseFloat(sliderF.value);
+            const f = f_GHz * 1e9;
+            const N = parseFloat(sliderN.value) * 1e9;
+            const V_th = parseFloat(sliderVth.value);
+            const I_leak = parseFloat(sliderIleak.value);
+
+            // Display Values
+            valV.textContent = V.toFixed(2) + " V";
+            valF.textContent = f_GHz.toFixed(2) + " GHz";
+            valN.textContent = parseFloat(sliderN.value).toFixed(2) + " × 10⁹";
+            valVth.textContent = V_th.toFixed(2) + " V";
+            valIleak.textContent = I_leak.toFixed(2) + " A";
+            chartFixedVBox.textContent = V.toFixed(2) + "V";
+
+            // Physics Calculations
+            const f_max_GHz = getMaxFrequency(V, V_th);
+            const T_exec = N / f;
+            const E_dyn = ALPHA_C * Math.pow(V, 2) * N;
+            const E_stat = (V * I_leak) * T_exec;
+            const E_total = E_dyn + E_stat;
+
+            // Gate Delay (ps)
+            const t_delay_ps = f_max_GHz > 0 ? (1000 / f_max_GHz) : Infinity;
+
+            // Metric UI updates
+            metricTexec.textContent = T_exec < 1.0 ? (T_exec * 1000).toFixed(1) + " ms" : T_exec.toFixed(2) + " s";
+            metricFmax.textContent = f_max_GHz > 0 ? f_max_GHz.toFixed(2) + " GHz" : "0.00 GHz";
+            metricTdelay.textContent = isFinite(t_delay_ps) ? Math.round(t_delay_ps) + " ps" : "∞ (Off)";
+            metricEtotal.textContent = E_total.toFixed(2) + " J";
+
+            const dynPct = Math.round((E_dyn / E_total) * 100);
+            powerRatioText.textContent = `Dyn: ${dynPct}% | Stat: ${100 - dynPct}%`;
+
+            // State Evaluation
+            if (V <= V_th) {
+                // Zone 3: Dead Zone / Undervolting
+                statusBadge.className = "p-4 rounded-xl border transition-all duration-300 flex items-start space-x-3 bg-amber-950/50 border-amber-800 text-amber-300";
+                statusIcon.className = "p-2 rounded-lg bg-amber-900/60 border border-amber-700/50";
+                statusIcon.innerHTML = `<i class="fa-solid fa-power-off text-xl"></i>`;
+                statusTag.className = "text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded bg-amber-900/80 text-amber-200 border border-amber-700";
+                statusTag.textContent = "Dead Zone / Undervolted";
+                statusTitle.className = "font-bold text-sm text-amber-200 mt-1";
+                statusTitle.textContent = "Gates Cannot Turn On ($V \\le V_{\\text{th}}$)";
+                statusDesc.textContent = `Supply voltage V (${V.toFixed(2)}V) is at or below threshold voltage V_th (${V_th.toFixed(2)}V). Transistors fail to conduct cleanly.`;
+            } else if (f_GHz > f_max_GHz) {
+                // Zone 2: Overclocking / Timing Fault Region
+                statusBadge.className = "p-4 rounded-xl border transition-all duration-300 flex items-start space-x-3 bg-rose-950/60 border-rose-800 text-rose-300 animate-pulse";
+                statusIcon.className = "p-2 rounded-lg bg-rose-900/60 border border-rose-700/50";
+                statusIcon.innerHTML = `<i class="fa-solid fa-triangle-exclamation text-xl"></i>`;
+                statusTag.className = "text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded bg-rose-900/80 text-rose-200 border border-rose-700";
+                statusTag.textContent = "Timing Violation / Unstable";
+                statusTitle.className = "font-bold text-sm text-rose-200 mt-1";
+                statusTitle.textContent = `Frequency Too High ($f > f_{\\text{max}}$)`;
+                statusDesc.innerHTML = `Operating at <strong>${f_GHz.toFixed(2)} GHz</strong> exceeds maximum stable clock <strong>${f_max_GHz.toFixed(2)} GHz</strong> for ${V.toFixed(2)}V. Setup time violations will corrupt execution!`;
+            } else {
+                // Zone 1: Safe Stable Region
+                statusBadge.className = "p-4 rounded-xl border transition-all duration-300 flex items-start space-x-3 bg-emerald-950/40 border-emerald-800 text-emerald-300";
+                statusIcon.className = "p-2 rounded-lg bg-emerald-900/60 border border-emerald-700/50";
+                statusIcon.innerHTML = `<i class="fa-solid fa-shield-halved text-xl"></i>`;
+                statusTag.className = "text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded bg-emerald-900/80 text-emerald-200 border border-emerald-700";
+                statusTag.textContent = "Safe / Stable";
+                statusTitle.className = "font-bold text-sm text-emerald-200 mt-1";
+                statusTitle.textContent = `Normal Operation ($f \\le f_{\\text{max}}$)`;
+                statusDesc.innerHTML = `Frequency <strong>${f_GHz.toFixed(2)} GHz</strong> is safely within max limit <strong>${f_max_GHz.toFixed(2)} GHz</strong>. Digital signals settle in time.`;
+            }
+
+            // Update Donut
+            donutChart.data.datasets[0].data = [E_dyn, E_stat];
+            donutChart.update('none');
+
+            // Update f_max(V) Chart
+            updateFmaxChart(V, f_GHz, V_th, f_max_GHz);
+
+            // Update Pareto Chart
+            updateParetoChart(V, N, I_leak, f_GHz, E_total);
+
+            // Render MathJax
+            if (window.MathJax && window.MathJax.typesetPromise) {
+                MathJax.typesetPromise();
+            }
+        }
+
+        // Initialize Voltage vs Max Frequency Constraint Chart
+        function initFmaxChart() {
+            const ctx = document.getElementById('fmaxChart').getContext('2d');
+            fmaxChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [
+                        {
+                            label: 'f_max(V) Maximum Frequency Boundary',
+                            data: [],
+                            borderColor: '#10b981',
+                            backgroundColor: 'rgba(16, 185, 129, 0.15)',
+                            fill: true,
+                            borderWidth: 2.5,
+                            tension: 0.3,
+                            pointRadius: 0
+                        },
+                        {
+                            label: 'Current Operating Point',
+                            data: [],
+                            backgroundColor: '#3b82f6',
+                            borderColor: '#ffffff',
+                            pointRadius: 7,
+                            pointHoverRadius: 9,
+                            borderWidth: 2,
+                            type: 'scatter'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            type: 'linear',
+                            position: 'bottom',
+                            min: 0.2,
+                            max: 1.45,
+                            title: { display: true, text: 'Supply Voltage V (Volts)', color: '#64748b', font: { size: 10 } },
+                            grid: { color: '#1e293b' },
+                            ticks: { color: '#64748b', font: { size: 10 } }
+                        },
+                        y: {
+                            min: 0,
+                            max: 4.0,
+                            title: { display: true, text: 'Frequency f (GHz)', color: '#64748b', font: { size: 10 } },
+                            grid: { color: '#1e293b' },
+                            ticks: { color: '#64748b', font: { size: 10 } }
+                        }
+                    },
+                    plugins: {
+                        legend: { labels: { color: '#94a3b8', font: { size: 10 }, boxWidth: 10 } },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `V: ${context.parsed.x.toFixed(2)}V, f: ${context.parsed.y.toFixed(2)}GHz`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateFmaxChart(currentV, currentF, Vth, fMaxCurrent) {
+            const curvePoints = [];
+            for (let v = 0.2; v <= 1.45; v += 0.02) {
+                const fmax = getMaxFrequency(v, Vth);
+                curvePoints.push({ x: v, y: fmax });
+            }
+
+            fmaxChart.data.datasets[0].data = curvePoints;
+
+            // Point color changes based on violation status
+            const isViolation = currentF > fMaxCurrent || currentV <= Vth;
+            const pointColor = currentV <= Vth ? '#f59e0b' : (isViolation ? '#f43f5e' : '#10b981');
+
+            fmaxChart.data.datasets[1].data = [{ x: currentV, y: currentF }];
+            fmaxChart.data.datasets[1].backgroundColor = pointColor;
+
+            fmaxChart.update('none');
+        }
+
+        // Initialize Donut Energy Breakdown Chart
+        function initDonutChart() {
+            const ctx = document.getElementById('energyDonutChart').getContext('2d');
+            donutChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Dynamic Energy (α C V² N)', 'Static Energy (V I_leak T_exec)'],
+                    datasets: [{
+                        data: [3.0, 0.5],
+                        backgroundColor: ['#06b6d4', '#f43f5e'],
+                        borderColor: '#0f172a',
+                        borderWidth: 3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { color: '#94a3b8', font: { size: 10 }, boxWidth: 10 } }
+                    },
+                    cutout: '68%'
+                }
+            });
+        }
+
+        // Initialize Pareto / Time vs Energy Tradeoff Chart
+        function initParetoChart() {
+            const ctx = document.getElementById('paretoChart').getContext('2d');
+            paretoChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [
+                        {
+                            label: 'Total Energy E_task vs f',
+                            borderColor: '#3b82f6',
+                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                            fill: true,
+                            borderWidth: 2,
+                            tension: 0.3,
+                            data: [],
+                            pointRadius: 0
+                        },
+                        {
+                            label: 'Current Point',
+                            backgroundColor: '#3b82f6',
+                            borderColor: '#ffffff',
+                            pointRadius: 6,
+                            data: [],
+                            type: 'scatter'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            type: 'linear',
+                            position: 'bottom',
+                            title: { display: true, text: 'Execution Time T_exec (seconds)', color: '#64748b', font: { size: 10 } },
+                            grid: { color: '#1e293b' },
+                            ticks: { color: '#64748b', font: { size: 10 } }
+                        },
+                        y: {
+                            title: { display: true, text: 'Energy (Joules)', color: '#64748b', font: { size: 10 } },
+                            grid: { color: '#1e293b' },
+                            ticks: { color: '#64748b', font: { size: 10 } },
+                            beginAtZero: false
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false }
+                    }
+                }
+            });
+        }
+
+        function updateParetoChart(V, N, Ileak, currentF_GHz, currentE) {
+            const tradePoints = [];
+            const Edyn = ALPHA_C * Math.pow(V, 2) * N;
+
+            for (let f_g = 0.4; f_g <= 3.8; f_g += 0.1) {
+                const f_hz = f_g * 1e9;
+                const tex = N / f_hz;
+                const Estat = (V * Ileak) * tex;
+                const Etot = Edyn + Estat;
+                tradePoints.push({ x: tex, y: Etot });
+            }
+
+            // Sort points by time for line drawing
+            tradePoints.sort((a, b) => a.x - b.x);
+
+            const currentTex = N / (currentF_GHz * 1e9);
+
+            paretoChart.data.datasets[0].data = tradePoints;
+            paretoChart.data.datasets[1].data = [{ x: currentTex, y: currentE }];
+            paretoChart.update('none');
+        }
+    </script>
+</body>
+</html>
