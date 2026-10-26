@@ -1,5 +1,7 @@
 # Hands-on session  
 
+Jump to [Activity 2](#activity2.)
+
 ## Activity 1. DFVS in servers
 
 Open the [dashboard](https://paolo-giaccone.github.io/edu-visuals/datacenter-energy/cmos_energy_tradeoff.html) and check the following settings (they should default)
