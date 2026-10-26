@@ -87,10 +87,18 @@ Compare the different energy vs execution time tradeoff.
 
 We evaluate a scenario with 4 servers. This model easily generalizes to a full data center setting where each server represents an entire rack or pod, simply by applying an appropriate scaling factor (e.g., $10^3$ for a server rack).
 
-![Datacenter scalability](Figs/pods.jpeg)
+![Datacenter scalability](Figs/pods2.jpeg)
 
 Open the [dashboard](https://paolo-giaccone.github.io/edu-visuals/datacenter-energy/datacenter_power_onoff.html) and check the following settings (they should default)
-- xxx
+- Total workload capacity 180%
+- Perfect load balancing
+- Server: Idle Power 100 W,  Max power 300
+- Allocation: 45% for each server
+
+| Scenario | Server 1-4 Allocation % | Power (linear profile) | Power (onoff profile)| Power (cubic profile) |
+| :--: | :--: |  :--: |  :--: | :--:|  
+| S1 | 45,45,45,45 | 760 W | 1200 W | 473W |
+
 
 
 
