@@ -85,7 +85,7 @@ Compare the different energy vs execution time tradeoff.
 
 ## Activity 2.
 
-Open the [dashboard](https://paolo-giaccone.github.io/edu-visuals/datacenter-energy/datacenter_power.html) and check the following settings (they should default)
+Open the [dashboard](https://paolo-giaccone.github.io/edu-visuals/datacenter-energy/datacenter_power_onoff.html) and check the following settings (they should default)
 - xxx
 
 
