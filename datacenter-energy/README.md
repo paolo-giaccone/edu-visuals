@@ -92,12 +92,15 @@ We evaluate a scenario with 4 servers. This model easily generalizes to a full d
 Open the [dashboard](https://paolo-giaccone.github.io/edu-visuals/datacenter-energy/datacenter_power_onoff.html) and check the following settings (they should default)
 - Total workload capacity 180%
 - Perfect load balancing
-- Server: Idle Power 100 W,  Max power 300
-- Allocation: 45% for each server
+- Server: Idle Power 100 W,  Max power 300 W
+
+Now move the slides of the supply voltage to verify that the data in the following table is correct.
 
 | Scenario | Server 1-4 Allocation % | Power (linear profile) | Power (onoff profile)| Power (cubic profile) |
 | :--: | :--: |  :--: |  :--: | :--:|  
 | S1 | 45,45,45,45 | 760 W | 1200 W | 473W |
+
+**Q1:***
 
 
 
