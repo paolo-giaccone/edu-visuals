@@ -85,6 +85,10 @@ Compare the different energy vs execution time tradeoff.
 
 ## Activity 2.
 
+We evaluate a scenario with 4 servers. This model easily generalizes to a full data center setting where each server represents an entire rack or pod, simply by applying an appropriate scaling factor (e.g., $10^3$ for a server rack).
+
+![Datacenter scalability](Figs/pods.jpeg)
+
 Open the [dashboard](https://paolo-giaccone.github.io/edu-visuals/datacenter-energy/datacenter_power_onoff.html) and check the following settings (they should default)
 - xxx
 
