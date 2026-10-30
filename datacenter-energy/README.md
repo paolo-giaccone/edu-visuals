@@ -4,9 +4,9 @@ Jump to [Activity 1](#activity-1-dfvs-in-servers)
 
 Jump to [Activity 2](#activity-2)
 
-## Activity 1. DFVS in servers
+# Activity 1. DFVS in servers
 
-Open the [dashboard](https://paolo-giaccone.github.io/edu-visuals/datacenter-energy/cmos_energy_tradeoff.html) and check the following settings (they should be the default ones)
+Open the [dashboard](https://paolo-giaccone.github.io/edu-visuals/datacenter-energy/cmos_energy_tradeoff.html) and check the following default settings:
 - Task workload $N = 5 \times 10^9$ cycles
 - Threshold voltage $V_{th}=0.35~V$
 - Leakage current $I_{leak}=0.45~A$
@@ -93,7 +93,7 @@ We evaluate a scenario with 4 servers. This model easily generalizes to a full d
 
 ![Datacenter scalability](Figs/pods3.jpeg)
 
-Open the [dashboard](https://paolo-giaccone.github.io/edu-visuals/datacenter-energy/datacenter_power_onoff.html) and check the following settings (they should default)
+Open the [dashboard](https://paolo-giaccone.github.io/edu-visuals/datacenter-energy/datacenter_power_onoff.html) and check the following default settings:
 - Total workload capacity 180%
 - Perfect load balancing
 - Server: Idle Power $P_{idle}$=100 W,  Max power $P_{max}$=300 W
