@@ -6,7 +6,7 @@ Jump to [Activity 2](#activity-2)
 
 ## Activity 1. DFVS in servers
 
-Open the [dashboard](https://paolo-giaccone.github.io/edu-visuals/datacenter-energy/cmos_energy_tradeoff.html) and check the following settings (they should default)
+Open the [dashboard](https://paolo-giaccone.github.io/edu-visuals/datacenter-energy/cmos_energy_tradeoff.html) and check the following settings (they should be the default ones)
 - Task workload $N = 5 \times 10^9$ cycles
 - Threshold voltage $V_{th}=0.35~V$
 - Leakage current $I_{leak}=0.45~A$
