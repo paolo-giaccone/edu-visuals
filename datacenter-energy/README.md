@@ -49,7 +49,7 @@ reduced with respect to S4 (40%)
 reduced with respect to S1 (46%)
 --->
 
-**Q5:** Consider scenario S1 and modify *only* the clock frequency to minimize the overall task energy.
+**Q5:** Consider scenario S1 and modify *only* the **clock frequency** to minimize the overall task energy.
 Let S6 be the new scenario. Fill the following:
 
 | Scenario | Supply voltage $V$ | Clock Frequency $f$ | Execution time | Task energy |
