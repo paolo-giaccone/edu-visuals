@@ -6,7 +6,7 @@ Jump to [Activity 2](#activity-2)
 
 # Activity 1. DFVS in servers
 
-> The Word template for the session is available [here](Activity1.docx)
+> The Word template for the session is available [here](Activity1.docx) (click Download raw file)
 
 Open the [dashboard](https://paolo-giaccone.github.io/edu-visuals/datacenter-energy/cmos_energy_tradeoff.html) and check the following default settings:
 - Task workload $N = 5 \times 10^9$ cycles
@@ -90,6 +90,8 @@ Let S8 be the new scenario. Fill the following:
 Compare the different energy vs execution time tradeoff.
 
 # Activity 2. Datacenter power and workload management
+
+> The Word template for the session is available [here](Activity2.docx) (click Download raw file)
 
 We evaluate a scenario with 4 servers. This model easily generalizes to a full data center setting where each server represents an entire rack or pod, simply by applying an appropriate scaling factor (e.g., $10^3$ for a server rack).
 
