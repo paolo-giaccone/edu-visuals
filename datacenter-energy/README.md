@@ -23,7 +23,7 @@ Now move the slides of the supply voltage to verify that the data in the followi
 
 **Q2:** Why scenario S3 is unfeasible?
 
-**Q3:** Consider scenario S1 and modify *only* clock frequency to obtain an execution time equal to 5.0 s. Let S4 be the new scenario. Fill the following:
+**Q3:** Consider scenario S1 and modify *only* **clock frequency** to obtain an execution time equal to 5.0 s. Let S4 be the new scenario. Fill the following:
 
  | Scenario | Supply voltage $V$ | Clock Frequency $f$ | Execution time | Task energy |
  | :---: | :---: | :---: | :---: | :---: |
@@ -35,7 +35,7 @@ Did you experience a reduction in task energy? Why?
 
 <!---  No, due to the static power --->
 
-**Q4:** Consider scenario S4 and modify *only* supply voltage to reduce as much as possible the task energy. Let S5 be the new scenario. Fill the following:
+**Q4:** Consider scenario S4 and modify *only* **supply voltage** to reduce as much as possible the task energy. Let S5 be the new scenario. Fill the following:
 
  | Scenario | Supply voltage $V$ | Clock Frequency $f$ | Execution time | Task energy |
  | :---: | :---: | :---: | :---: | :---: |
