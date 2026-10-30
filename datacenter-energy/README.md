@@ -6,6 +6,8 @@ Jump to [Activity 2](#activity-2)
 
 # Activity 1. DFVS in servers
 
+> The Word template for the session is available [here](Activity1.docx)
+
 Open the [dashboard](https://paolo-giaccone.github.io/edu-visuals/datacenter-energy/cmos_energy_tradeoff.html) and check the following default settings:
 - Task workload $N = 5 \times 10^9$ cycles
 - Threshold voltage $V_{th}=0.35~V$
