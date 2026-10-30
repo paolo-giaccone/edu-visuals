@@ -1,6 +1,7 @@
 # Hands-on session  
 
 Jump to [Activity 1](#activity-1-dfvs-in-servers)
+
 Jump to [Activity 2](#activity-2)
 
 ## Activity 1. DFVS in servers
