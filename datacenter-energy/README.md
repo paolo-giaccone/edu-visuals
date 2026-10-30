@@ -1,5 +1,6 @@
 # Hands-on session  
 
+Jump to [Activity 1](#activity-1-dfvs-in-servers)
 Jump to [Activity 2](#activity-2)
 
 ## Activity 1. DFVS in servers
@@ -110,7 +111,7 @@ Observe:
 
 
 **Q1:**
-Consider a *OnOff power profile*. 
+Consider an **OnOff power profile**. 
 Find the power consumption for different workload. 
 | Workload Capacity Load | Power [W] for Consolidate | Power [W] for Consolidate with Load Balance | Power [W] for Load Balance |
 | :---: | :---: | :---: | :---: |  
@@ -136,7 +137,7 @@ Consolidate and Consolidate with Load Balancing are always the best and perform 
 -->
 
 **Q3:**
-Consider a *Linear power profile*. 
+Consider a **Linear power profile**. 
 Find the power consumption for different workload. 
 | Workload Capacity Load | Consolidate | Consolidate with Load Balance | Load Balance |
 | :---: | :---: | :---: | :---: |  
@@ -161,7 +162,7 @@ What is the best policy for linear power profile?  Is it the same for all possib
 --->
 
 **Q5:**
-Consider a *cubic power profile*. 
+Consider a **Cubic power profile**. 
 Find the power consumption for different workload. 
 | Workload Capacity Load | Consolidate | Consolidate with Load Balance | Load Balance |
 | :---: | :---: | :---: | :---: | 
