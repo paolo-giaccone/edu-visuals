@@ -58,7 +58,7 @@ Let S6 be the new scenario. Fill the following:
 <!---  2.35GHz, 2.13s, 6.96J
  This almost the same as S1 --->
 
-**Q6 (Min execution time policy):**  Consider scenario S1 and modify *only* the clock frequency and the supply voltage to minimize the task execution time.
+**Q6 (Min execution time policy):**  Consider scenario S1 and modify *only* the **clock frequency** and the **supply voltage** to minimize the task execution time.
 Let S7 be the new scenario. Fill the following:
 
 | Scenario | Supply voltage $V$ | Clock Frequency $f$ | Execution time | Task energy |
@@ -68,7 +68,7 @@ Let S7 be the new scenario. Fill the following:
 Compare the execution time and the task energy with respect to S1.
 <!---  3.25GHz, 1.54s, 13.62J --->
 
-**Q7 (Min energy policy):** Consider scenario S1 and modify *only* the clock frequency and the supply voltage to minimize the task execution time across . (Hint: Use voltage around 0.4-0.5 V)
+**Q7 (Min energy policy):** Consider scenario S1 and modify *only* the **clock frequency** and the **supply voltage** to minimize the task execution time across . (Hint: Use voltage around 0.4-0.5 V)
 
 Let S8 be the new scenario. Fill the following:
 
