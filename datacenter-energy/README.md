@@ -87,7 +87,7 @@ Let S8 be the new scenario. Fill the following:
 
 Compare the different energy vs execution time tradeoff.
 
-## Activity 2.
+# Activity 2.
 
 We evaluate a scenario with 4 servers. This model easily generalizes to a full data center setting where each server represents an entire rack or pod, simply by applying an appropriate scaling factor (e.g., $10^3$ for a server rack).
 
