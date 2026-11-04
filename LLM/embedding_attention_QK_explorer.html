@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLM Visualizer: Embedding & Attention</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0f6ff',
+                            100: '#e0edff',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                            900: '#1e3a8a',
+                        },
+                        accent: {
+                            purple: '#8b5cf6',
+                            pink: '#ec4899',
+                            teal: '#14b8a6',
+                            amber: '#f59e0b'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Stili personalizzati e animazioni */
+        .glass-card {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .heat-cell {
+            transition: all 0.2s ease;
+        }
+        .heat-cell:hover {
+            transform: scale(1.1);
+            z-index: 10;
+        }
+        @keyframes pulse-light {
+            0%, 100% { opacity: 0.6; }
+            50% { opacity: 1; }
+        }
+        .animate-pulse-slow {
+            animation: pulse-light 3s infinite;
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 font-sans min-h-screen flex flex-col selection:bg-brand-500 selection:text-white">
+
+    <!-- Header -->
+    <header class="border-b border-slate-800 bg-slate-900/80 sticky top-0 z-50 backdrop-blur-md">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="p-2 bg-gradient-to-tr from-brand-600 to-accent-purple rounded-xl shadow-lg shadow-brand-500/20">
+                    <i class="fa-solid fa-brain text-xl text-white"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg leading-tight bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">LLM Explorer</h1>
+                    <p class="text-xs text-slate-400">Come gli LLM comprendono il linguaggio: Embedding & Attention</p>
+                </div>
+            </div>
+            
+            <!-- Navigation Stepper -->
+            <nav class="hidden md:flex items-center space-x-1 bg-slate-800/60 p-1.5 rounded-xl border border-slate-700/50">
+                <button onclick="goToStep(1)" id="nav-step-1" class="px-4 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 flex items-center space-x-2 bg-brand-600 text-white shadow-sm">
+                    <span class="w-5 h-5 rounded-full bg-white/20 text-xs flex items-center justify-center font-bold">1</span>
+                    <span>Embedding 2D</span>
+                </button>
+                <button onclick="goToStep(2)" id="nav-step-2" class="px-4 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 flex items-center space-x-2 text-slate-400 hover:text-slate-200">
+                    <span class="w-5 h-5 rounded-full bg-slate-700 text-xs flex items-center justify-center font-bold">2</span>
+                    <span>Query & Key (Q & K)</span>
+                </button>
+                <button onclick="goToStep(3)" id="nav-step-3" class="px-4 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 flex items-center space-x-2 text-slate-400 hover:text-slate-200">
+                    <span class="w-5 h-5 rounded-full bg-slate-700 text-xs flex items-center justify-center font-bold">3</span>
+                    <span>Attention Asimmetrica</span>
+                </button>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col gap-6">
+
+        <!-- Top Controls & Sentence Input -->
+        <section class="glass-card rounded-2xl p-5 shadow-xl relative overflow-hidden">
+            <div class="absolute top-0 right-0 w-96 h-96 bg-brand-500/10 rounded-full blur-3xl -z-10 pointer-events-none"></div>
+            
+            <div class="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
+                <div class="w-full md:w-auto flex-1">
+                    <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
+                        <i class="fa-solid fa-quote-left text-brand-500 mr-1.5"></i>Seleziona o Inserisci una Frase
+                    </label>
+                    <div class="flex flex-wrap gap-2 mb-3">
+                        <button onclick="setSentence('Il gatto mangia il pesce')" class="preset-btn px-3 py-1.5 rounded-lg text-xs bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 transition-all">
+                            🐱 "Il gatto mangia il pesce"
+                        </button>
+                        <button onclick="setSentence('La regina indossa una corona')" class="preset-btn px-3 py-1.5 rounded-lg text-xs bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 transition-all">
+                            👑 "La regina indossa una corona"
+                        </button>
+                        <button onclick="setSentence('Il cane insegue la palla')" class="preset-btn px-3 py-1.5 rounded-lg text-xs bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 transition-all">
+                            🐶 "Il cane insegue la palla"
+                        </button>
+                    </div>
+                    <div class="flex gap-2">
+                        <input type="text" id="custom-sentence" placeholder="Scrivi una frase personalizzata..." 
+                               class="bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-sm text-slate-100 focus:outline-none focus:border-brand-500 flex-1 shadow-inner">
+                        <button onclick="applyCustomSentence()" class="bg-brand-600 hover:bg-brand-500 text-white font-medium px-4 py-2 rounded-xl text-sm transition-all shadow-lg shadow-brand-600/20 flex items-center gap-2">
+                            <span>Analizza</span>
+                            <i class="fa-solid fa-wand-magic-sparkles text-xs"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Info summary box -->
+                <div class="w-full md:w-72 bg-slate-900/90 rounded-xl p-3.5 border border-slate-800 text-xs text-slate-300">
+                    <div class="font-semibold text-white mb-1 flex items-center justify-between">
+                        <span>Stato del Modello</span>
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                            Pronto
+                        </span>
+                    </div>
+                    <div class="space-y-1 text-slate-400">
+                        <div class="flex justify-between"><span>Token rilevati:</span> <span id="token-count" class="font-mono text-slate-200">5</span></div>
+                        <div class="flex justify-between"><span>Dim. Vettori:</span> <span class="font-mono text-slate-200">5 D</span></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- STEP 1: TOKENIZATION & VECTOR EMBEDDING -->
+        <section id="step-1" class="step-section flex flex-col gap-6">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Left 2 cols: Embedding Matrix + Canvas 2D -->
+                <div class="lg:col-span-2 glass-card rounded-2xl p-6 shadow-xl flex flex-col gap-6">
+                    <div>
+                        <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-cubes text-brand-500"></i>
+                            1. Word Embeddings & Spazio Semantico 2D
+                        </h2>
+                        <p class="text-xs text-slate-400 mt-0.5">Ogni parola viene tradotta in una serie di caratteristiche (vettore) e posizionata nello spazio in base al significato.</p>
+                    </div>
+
+                    <!-- Canvas 2D container -->
+                    <div class="relative w-full h-[280px] bg-slate-950 rounded-xl border border-slate-800 overflow-hidden flex items-center justify-center">
+                        <canvas id="vector-canvas" class="w-full h-full cursor-pointer"></canvas>
+                    </div>
+
+                    <!-- Embeddings Bar Matrix -->
+                    <div id="embedding-matrix" class="space-y-3 overflow-y-auto max-h-[260px] pr-2">
+                        <!-- Generato via JavaScript -->
+                    </div>
+                </div>
+
+                <!-- Right 1 col: Explanation -->
+                <div class="glass-card rounded-2xl p-6 shadow-xl flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center gap-2 text-brand-400 text-sm font-semibold mb-2">
+                            <i class="fa-solid fa-lightbulb"></i>
+                            <span>Vettori & Concetti</span>
+                        </div>
+                        <p class="text-xs text-slate-300 leading-relaxed mb-3">
+                            Prima dell'attenzione, l'LLM trasforma ogni parola in numeri. Parole con significati simili (come *gatto* e *cane*) sono vicine nello spazio vettoriale.
+                        </p>
+                        <p class="text-xs text-slate-300 leading-relaxed mb-4">
+                            Tuttavia, l'embedding da solo **non conosce il contesto**. La parola *"pesce"* ha lo stesso vettore sia che sia mangiata da un gatto, sia che nuoti nel mare. Per capire il contesto serve il meccanismo **Query-Key**!
+                        </p>
+
+                        <!-- Selected Token Deep-Dive -->
+                        <div id="selected-token-card" class="bg-slate-900/90 rounded-xl p-4 border border-brand-500/30">
+                            <span class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Parola Selezionata</span>
+                            <div class="flex items-center justify-between mt-1 mb-2">
+                                <h3 id="sel-token-name" class="text-xl font-bold text-brand-400">"gatto"</h3>
+                                <span id="sel-token-type" class="text-xs px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">Sostantivo</span>
+                            </div>
+                            <div id="sel-token-dims" class="space-y-1.5 text-xs">
+                                <!-- Generato via JavaScript -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <button onclick="goToStep(2)" class="w-full mt-6 bg-gradient-to-r from-brand-600 to-accent-purple hover:from-brand-500 text-white font-medium py-3 rounded-xl text-sm transition-all shadow-lg flex items-center justify-center gap-2 group">
+                        <span>Passo 2: Scopri Query (Q) & Key (K)</span>
+                        <i class="fa-solid fa-arrow-right group-hover:translate-x-1 transition-transform"></i>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- STEP 2: QUERY (Q) & KEY (K) CONCEPTUAL MATCHING -->
+        <section id="step-2" class="step-section hidden flex-col gap-6">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <!-- Left 5 cols: Query Selector & Intent -->
+                <div class="lg:col-span-5 glass-card rounded-2xl p-6 shadow-xl flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between mb-4">
+                            <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                                <i class="fa-solid fa-magnifying-glass text-amber-400"></i>
+                                La Query (Q) = "Cosa cerco?"
+                            </h2>
+                            <span class="text-[10px] bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded font-semibold">Ruolo: Domanda</span>
+                        </div>
+                        <p class="text-xs text-slate-300 leading-relaxed mb-4">
+                            Ogni parola nella frase si trasforma in una **Query (Domanda)**. Esprime l'esigenza informativa di quella parola nel contesto della frase.
+                        </p>
+
+                        <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
+                            Seleziona la parola in cerca di risposte:
+                        </label>
+                        <div id="query-tokens-selector" class="flex flex-wrap gap-2 mb-4">
+                            <!-- Generato via JS -->
+                        </div>
+
+                        <!-- Active Query Card -->
+                        <div class="bg-slate-900/90 rounded-xl p-4 border border-amber-500/40 relative overflow-hidden shadow-inner">
+                            <div class="text-[10px] text-amber-400 font-bold uppercase tracking-wider mb-1">Intent della Query (Q)</div>
+                            <h3 id="active-query-word" class="text-2xl font-extrabold text-white mb-2">"mangia"</h3>
+                            <div id="active-query-desc" class="p-3 bg-amber-500/10 rounded-lg border border-amber-500/20 text-xs text-amber-200">
+                                <!-- Generato via JS -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-4 p-3 bg-slate-900/60 rounded-xl border border-slate-800 text-xs text-slate-400">
+                        <i class="fa-solid fa-info-circle text-brand-400 mr-1"></i>
+                        Pensa alla **Query** come a un annuncio di ricerca lavorativa, e alla **Key** come al CV presentato dalle altre parole!
+                    </div>
+                </div>
+
+                <!-- Right 7 cols: Key (K) Cards & Compatibility Scores -->
+                <div class="lg:col-span-7 glass-card rounded-2xl p-6 shadow-xl flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between mb-4">
+                            <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                                <i class="fa-solid fa-key text-emerald-400"></i>
+                                Le Key (K) = "Che informazioni offro?"
+                            </h2>
+                            <span class="text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded font-semibold">Ruolo: Etichetta</span>
+                        </div>
+                        <p class="text-xs text-slate-300 leading-relaxed mb-4">
+                            Tutte le parole offrono contemporaneamente una **Key (Chiave/Etichetta)** che descrive ciò che rappresentano. Il sistema confronta la **Query** attiva con tutte le **Key** per trovare le migliori corrispondenze!
+                        </p>
+
+                        <!-- Key Match List -->
+                        <div id="key-matching-list" class="space-y-3 max-h-[340px] overflow-y-auto pr-1">
+                            <!-- Generato via JS -->
+                        </div>
+                    </div>
+
+                    <div class="flex gap-3 mt-6">
+                        <button onclick="goToStep(1)" class="w-1/3 bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium py-3 rounded-xl text-sm transition-all flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-arrow-left"></i>
+                            <span>Indietro</span>
+                        </button>
+                        <button onclick="goToStep(3)" class="w-2/3 bg-gradient-to-r from-emerald-500 to-accent-pink hover:opacity-90 text-white font-medium py-3 rounded-xl text-sm transition-all shadow-lg flex items-center justify-center gap-2 group">
+                            <span>Vedi la Matrice Asimmetrica</span>
+                            <i class="fa-solid fa-arrow-right group-hover:translate-x-1 transition-transform"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- STEP 3: ASYMMETRIC ATTENTION MATRIX & DIRECTED GRAPH -->
+        <section id="step-3" class="step-section hidden flex-col gap-6">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                
+                <!-- Left 7 cols: Attention Directed Graph (SVG with arrows) -->
+                <div class="lg:col-span-7 glass-card rounded-2xl p-6 shadow-xl flex flex-col">
+                    <div class="flex items-center justify-between mb-3">
+                        <div>
+                            <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                                <i class="fa-solid fa-route text-accent-pink"></i>
+                                3. Grafo Orientato dell'Attention
+                            </h2>
+                            <p class="text-xs text-slate-400 mt-0.5">Le frecce indicano la direzione del flusso informativo: da <strong>Query (Chi cerca)</strong> a <strong>Key (Chi viene consultato)</strong>.</p>
+                        </div>
+                    </div>
+
+                    <!-- Interactive Directed Graph Container -->
+                    <div class="relative w-full h-[360px] bg-slate-950 rounded-xl border border-slate-800 flex flex-col justify-between p-6 overflow-hidden">
+                        <!-- SVG Layer for Directed Arrows -->
+                        <svg id="attention-svg" class="absolute inset-0 w-full h-full pointer-events-none z-10">
+                            <defs>
+                                <marker id="arrowhead" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+                                    <polygon points="0 0, 8 4, 0 8" fill="#ec4899" />
+                                </marker>
+                                <marker id="arrowhead-purple" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+                                    <polygon points="0 0, 8 4, 0 8" fill="#8b5cf6" />
+                                </marker>
+                            </defs>
+                        </svg>
+
+                        <!-- Words Top Row (Keys) -->
+                        <div class="text-xs font-semibold text-emerald-400 uppercase tracking-wider mb-2 z-20 flex items-center gap-1.5">
+                            <i class="fa-solid fa-key"></i> Key (Offerta di Informazioni)
+                        </div>
+                        <div id="tokens-top-row" class="flex justify-between items-center relative z-20 px-4">
+                            <!-- Generato via JS -->
+                        </div>
+
+                        <!-- Words Bottom Row (Queries) -->
+                        <div class="mt-auto">
+                            <div class="text-xs font-semibold text-amber-400 uppercase tracking-wider mb-2 z-20 flex items-center gap-1.5">
+                                <i class="fa-solid fa-magnifying-glass"></i> Query (Clicca una parola per vederne le frecce)
+                            </div>
+                            <div id="tokens-bottom-row" class="flex justify-between items-center relative z-20 px-4">
+                                <!-- Generato via JS -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right 5 cols: Asymmetric Attention Matrix -->
+                <div class="lg:col-span-5 glass-card rounded-2xl p-6 shadow-xl flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between mb-2">
+                            <h3 class="text-md font-bold text-white flex items-center gap-2">
+                                <i class="fa-solid fa-border-all text-accent-pink"></i>
+                                Matrice Asimmetrica
+                            </h3>
+                            <span class="text-[10px] bg-accent-pink/20 text-accent-pink border border-accent-pink/30 px-2 py-0.5 rounded font-semibold">Righe ≠ Colonne</span>
+                        </div>
+                        <p class="text-xs text-slate-300 leading-relaxed mb-4">
+                            Nota l'**asimmetria**: La parola <strong>"mangia"</strong> presta molta attenzione a <strong>"gatto"</strong> (chi mangia?), ma <strong>"gatto"</strong> non rivolge la stessa quantità di attenzione a <strong>"mangia"</strong>!
+                        </p>
+
+                        <!-- Attention Matrix Render -->
+                        <div class="overflow-x-auto bg-slate-950 p-4 rounded-xl border border-slate-800">
+                            <div class="text-[10px] text-slate-400 text-center mb-2 font-mono">Colonne = Key (Fornitori)</div>
+                            <div id="attention-matrix-grid" class="inline-block min-w-full">
+                                <!-- Generato via JS -->
+                            </div>
+                            <div class="text-[10px] text-slate-400 text-center mt-2 font-mono">Righe = Query (Cercatori)</div>
+                        </div>
+                    </div>
+
+                    <!-- Dynamic Asymmetry Explanation Box -->
+                    <div id="attention-explanation-box" class="mt-4 p-4 rounded-xl bg-slate-900/90 border border-accent-pink/30 text-xs leading-relaxed text-slate-200">
+                        <div class="font-semibold text-accent-pink mb-1 flex items-center gap-1.5">
+                            <i class="fa-solid fa-arrows-split-up-and-left"></i>
+                            <span>Perché l'Attention è asimmetrica?</span>
+                        </div>
+                        <span id="attention-explanation-text">
+                            La relazione tra parole non è uno specchio pari. Cercare qualcuno non equivale a essere cercati con la stessa priorità!
+                        </span>
+                    </div>
+
+                    <div class="flex gap-3 mt-4">
+                        <button onclick="goToStep(2)" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium py-2.5 rounded-xl text-sm transition-all flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-arrow-left"></i>
+                            <span>Torna a Query & Key</span>
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-slate-800 py-4 text-center text-xs text-slate-500 bg-slate-950">
+        <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
+            <span>Visualizzatore Didattico Embedding & Self-Attention per LLM</span>
+            <span>Realizzato con HTML5 Canvas, SVG e Tailwind CSS</span>
+        </div>
+    </footer>
+
+    <!-- JavaScript Logic -->
+    <script>
+        // --- 1. VOCABULARY, EMBEDDING & QUERY/KEY INTENT DATABASE ---
+        const dimensionNames = ["Animale", "Regale", "Cibo", "Azione", "Oggetto"];
+        const dimensionColors = ["text-amber-400", "text-purple-400", "text-emerald-400", "text-rose-400", "text-sky-400"];
+        const dimensionBgColors = ["bg-amber-400", "bg-purple-400", "bg-emerald-400", "bg-rose-400", "bg-sky-400"];
+
+        // Database arricchito con Intenti di Query e Tag di Key in italiano senza formule!
+        const wordDatabase = {
+            "il":     { dims: [0.0, 0.0, 0.0, 0.0, 0.1], pos: "Articolo", x2d: 0.1, y2d: 0.1, queryIntent: "Cerca il sostantivo maschile a cui si riferisce", keyLabel: "Articolo determinativo maschile" },
+            "la":     { dims: [0.0, 0.0, 0.0, 0.0, 0.1], pos: "Articolo", x2d: 0.12, y2d: 0.15, queryIntent: "Cerca il sostantivo femminile a cui si riferisce", keyLabel: "Articolo determinativo femminile" },
+            "un":     { dims: [0.0, 0.0, 0.0, 0.0, 0.1], pos: "Articolo", x2d: 0.08, y2d: 0.08, queryIntent: "Cerca un sostantivo indeterminato", keyLabel: "Articolo indeterminativo" },
+            "una":    { dims: [0.0, 0.0, 0.0, 0.0, 0.1], pos: "Articolo", x2d: 0.09, y2d: 0.11, queryIntent: "Cerca un sostantivo femminile indeterminato", keyLabel: "Articolo indeterminativo femminile" },
+            "gatto":  { dims: [0.95, 0.0, 0.2, 0.3, 0.1], pos: "Sostantivo", x2d: 0.75, y2d: 0.8, queryIntent: "Cerca azioni compiute (verbi) o il proprio cibo", keyLabel: "Animale domestico felino, potenziale soggetto o oggetto" },
+            "cane":   { dims: [0.90, 0.0, 0.2, 0.4, 0.1], pos: "Sostantivo", x2d: 0.82, y2d: 0.75, queryIntent: "Cerca verbi d'azione o bersagli da inseguire", keyLabel: "Animale domestico canino, soggetto dinamico" },
+            "pesce":  { dims: [0.70, 0.0, 0.85, 0.2, 0.2], pos: "Sostantivo", x2d: 0.60, y2d: 0.5, queryIntent: "Cerca chi lo sta mangiando o dove si trova", keyLabel: "Cibo acquatico, oggetto di alimentazione" },
+            "palla":  { dims: [0.0, 0.0, 0.0, 0.1, 0.9], pos: "Sostantivo", x2d: 0.25, y2d: 0.85, queryIntent: "Cerca verbi di gioco o movimento", keyLabel: "Oggetto sferico da gioco" },
+            "re":     { dims: [0.2, 0.98, 0.1, 0.2, 0.3], pos: "Sostantivo", x2d: 0.3, y2d: 0.25, queryIntent: "Cerca le sue proprietà (corone, regni, azioni nobili)", keyLabel: "Sovrano maschio, entità regale" },
+            "regina": { dims: [0.2, 0.95, 0.1, 0.2, 0.3], pos: "Sostantivo", x2d: 0.35, y2d: 0.2, queryIntent: "Cerca oggetti regali o verbi di comando/vestizione", keyLabel: "Sovrana femmina, entità regale" },
+            "corona": { dims: [0.0, 0.90, 0.0, 0.0, 0.85], pos: "Sostantivo", x2d: 0.2, y2d: 0.4, queryIntent: "Cerca il sovrano a cui appartiene o il verbo indossa", keyLabel: "Simbolo / copricapo di regalità" },
+            "mangia": { dims: [0.3, 0.0, 0.9, 0.85, 0.0], pos: "Verbo", x2d: 0.65, y2d: 0.3, queryIntent: "Cerca DISPERATAMENTE: 1. Chi mangia? (Soggetto) 2. Cosa viene mangiato? (Cibo)", keyLabel: "Azione di nutrirsi / consumo alimentari" },
+            "insegue":{ dims: [0.4, 0.0, 0.0, 0.95, 0.0], pos: "Verbo", x2d: 0.85, y2d: 0.4, queryIntent: "Cerca: 1. Chi insegue? 2. Chi/cosa viene inseguito?", keyLabel: "Azione di inseguimento rapido" },
+            "indossa":{ dims: [0.1, 0.5, 0.0, 0.7, 0.2], pos: "Verbo", x2d: 0.4, y2d: 0.45, queryIntent: "Cerca: 1. La persona che indossa 2. L'abito o oggetto indossato", keyLabel: "Azione del vestire o portare accessori" }
+        };
+
+        const backgroundWords = [
+            { word: "cane", x: 0.82, y: 0.75 },
+            { word: "re", x: 0.3, y: 0.25 },
+            { word: "mela", x: 0.1, y: 0.7 },
+            { word: "pizza", x: 0.15, y: 0.65 }
+        ];
+
+        // --- STATE MANAGEMENT ---
+        let currentSentence = "Il gatto mangia il pesce";
+        let tokens = [];
+        let selectedTokenIndex = 1;
+        let queryTokenIndex = 2; // di default "mangia" per Query
+        let focusAttentionIndex = 2;
+        let currentStep = 1;
+
+        window.onload = function() {
+            setSentence(currentSentence);
+            window.addEventListener('resize', handleResize);
+        };
+
+        function handleResize() {
+            if (currentStep === 1) renderCanvas();
+            if (currentStep === 3) drawAttentionArcs();
+        }
+
+        function goToStep(stepNumber) {
+            currentStep = stepNumber;
+            
+            document.querySelectorAll('.step-section').forEach(el => {
+                el.classList.add('hidden');
+                el.classList.remove('flex');
+            });
+
+            const activeStepEl = document.getElementById(`step-${stepNumber}`);
+            activeStepEl.classList.remove('hidden');
+            activeStepEl.classList.add('flex');
+
+            for (let i = 1; i <= 3; i++) {
+                const btn = document.getElementById(`nav-step-${i}`);
+                if (i === stepNumber) {
+                    btn.className = "px-4 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 flex items-center space-x-2 bg-brand-600 text-white shadow-sm";
+                    btn.querySelector('span:first-child').className = "w-5 h-5 rounded-full bg-white/20 text-xs flex items-center justify-center font-bold";
+                } else {
+                    btn.className = "px-4 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 flex items-center space-x-2 text-slate-400 hover:text-slate-200";
+                    btn.querySelector('span:first-child').className = "w-5 h-5 rounded-full bg-slate-700 text-xs flex items-center justify-center font-bold";
+                }
+            }
+
+            if (stepNumber === 1) {
+                setTimeout(renderCanvas, 50);
+            } else if (stepNumber === 2) {
+                renderQueryKeyStep();
+            } else if (stepNumber === 3) {
+                setTimeout(() => {
+                    renderAttentionStep();
+                    drawAttentionArcs();
+                }, 50);
+            }
+        }
+
+        function setSentence(str) {
+            currentSentence = str;
+            document.getElementById('custom-sentence').value = str;
+            processSentence();
+        }
+
+        function applyCustomSentence() {
+            const val = document.getElementById('custom-sentence').value.trim();
+            if (val) {
+                currentSentence = val;
+                processSentence();
+            }
+        }
+
+        function processSentence() {
+            const rawWords = currentSentence.trim().split(/\s+/);
+            tokens = rawWords.map((word, idx) => {
+                const cleanWord = word.toLowerCase().replace(/[^a-zàèéìòù]/g, "");
+                let data = wordDatabase[cleanWord];
+                if (!data) {
+                    data = generatePseudoEmbedding(cleanWord);
+                }
+
+                return {
+                    id: idx,
+                    original: word,
+                    clean: cleanWord,
+                    dims: data.dims,
+                    pos: data.pos,
+                    x2d: data.x2d,
+                    y2d: data.y2d,
+                    queryIntent: data.queryIntent,
+                    keyLabel: data.keyLabel
+                };
+            });
+
+            document.getElementById('token-count').innerText = tokens.length;
+            selectedTokenIndex = tokens.length > 1 ? 1 : 0;
+            queryTokenIndex = tokens.length > 2 ? 2 : 0;
+            focusAttentionIndex = queryTokenIndex;
+
+            renderEmbeddingMatrix();
+            updateSelectedTokenCard(selectedTokenIndex);
+            
+            if (currentStep === 1) renderCanvas();
+            if (currentStep === 2) renderQueryKeyStep();
+            if (currentStep === 3) {
+                renderAttentionStep();
+                drawAttentionArcs();
+            }
+        }
+
+        function generatePseudoEmbedding(word) {
+            let hash = 0;
+            for (let i = 0; i < word.length; i++) hash = word.charCodeAt(i) + ((hash << 5) - hash);
+            const getVal = (seed) => Math.abs(Math.sin(hash + seed)).toFixed(2) * 0.8;
+            
+            return {
+                dims: [getVal(1), getVal(2), getVal(3), getVal(4), getVal(5)],
+                pos: "Parola Personalizzata",
+                x2d: (Math.abs(Math.sin(hash)) * 0.7 + 0.15),
+                y2d: (Math.abs(Math.cos(hash)) * 0.7 + 0.15),
+                queryIntent: "Cerca relazioni grammaticali o semantiche generiche nella frase",
+                keyLabel: "Entità o concetto personalizzato"
+            };
+        }
+
+        // --- STEP 1: EMBEDDINGS & CANVAS ---
+        function renderEmbeddingMatrix() {
+            const container = document.getElementById('embedding-matrix');
+            container.innerHTML = '';
+
+            tokens.forEach((token, idx) => {
+                const isSelected = idx === selectedTokenIndex;
+                const row = document.createElement('div');
+                row.className = `p-3 rounded-xl border transition-all cursor-pointer flex flex-col md:flex-row md:items-center justify-between gap-3 ${
+                    isSelected ? 'bg-brand-900/40 border-brand-500 shadow-md shadow-brand-500/10' : 'bg-slate-900/60 border-slate-800 hover:border-slate-700'
+                }`;
+                row.onclick = () => {
+                    selectedTokenIndex = idx;
+                    renderEmbeddingMatrix();
+                    updateSelectedTokenCard(idx);
+                    renderCanvas();
+                };
+
+                let html = `
+                    <div class="flex items-center gap-3 min-w-[140px]">
+                        <span class="w-6 h-6 rounded-lg bg-slate-800 text-slate-400 font-mono text-xs flex items-center justify-center font-bold">${idx}</span>
+                        <div>
+                            <div class="font-bold text-sm text-white">${token.original}</div>
+                            <div class="text-[10px] text-slate-400">${token.pos}</div>
+                        </div>
+                    </div>
+                    <div class="flex-1 grid grid-cols-5 gap-2">
+                `;
+
+                token.dims.forEach((val, dIdx) => {
+                    const pct = Math.round(val * 100);
+                    html += `
+                        <div class="flex flex-col gap-1">
+                            <div class="h-2 bg-slate-800 rounded-full overflow-hidden flex">
+                                <div class="${dimensionBgColors[dIdx]} h-full rounded-full" style="width: ${pct}%"></div>
+                            </div>
+                            <span class="text-[10px] text-slate-400 font-mono text-center">${val.toFixed(2)}</span>
+                        </div>
+                    `;
+                });
+
+                html += `</div>`;
+                row.innerHTML = html;
+                container.appendChild(row);
+            });
+        }
+
+        function updateSelectedTokenCard(idx) {
+            const token = tokens[idx];
+            if (!token) return;
+
+            document.getElementById('sel-token-name').innerText = `"${token.original}"`;
+            document.getElementById('sel-token-type').innerText = token.pos;
+
+            const dimsContainer = document.getElementById('sel-token-dims');
+            dimsContainer.innerHTML = '';
+
+            token.dims.forEach((val, dIdx) => {
+                const item = document.createElement('div');
+                item.className = 'flex items-center justify-between';
+                item.innerHTML = `
+                    <span class="text-slate-400 flex items-center gap-1.5">
+                        <span class="${dimensionColors[dIdx]} font-bold">●</span> ${dimensionNames[dIdx]}
+                    </span>
+                    <span class="font-mono text-slate-200 font-medium">${(val * 100).toFixed(0)}%</span>
+                `;
+                dimsContainer.appendChild(item);
+            });
+        }
+
+        function renderCanvas() {
+            const canvas = document.getElementById('vector-canvas');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            const rect = canvas.parentElement.getBoundingClientRect();
+            
+            canvas.width = rect.width;
+            canvas.height = rect.height;
+
+            const width = canvas.width;
+            const height = canvas.height;
+            const padding = 40;
+
+            ctx.fillStyle = '#020617';
+            ctx.fillRect(0, 0, width, height);
+
+            ctx.strokeStyle = '#1e293b';
+            ctx.lineWidth = 1;
+            for (let x = padding; x < width; x += 40) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, height);
+                ctx.stroke();
+            }
+            for (let y = padding; y < height; y += 40) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(width, y);
+                ctx.stroke();
+            }
+
+            backgroundWords.forEach(bw => {
+                const px = padding + bw.x * (width - padding * 2);
+                const py = padding + bw.y * (height - padding * 2);
+                ctx.beginPath();
+                ctx.arc(px, py, 4, 0, Math.PI * 2);
+                ctx.fillStyle = '#475569';
+                ctx.fill();
+                ctx.font = '11px Inter';
+                ctx.fillStyle = '#64748b';
+                ctx.fillText(bw.word, px + 8, py + 4);
+            });
+
+            tokens.forEach((token, i) => {
+                const px = padding + token.x2d * (width - padding * 2);
+                const py = padding + token.y2d * (height - padding * 2);
+
+                ctx.beginPath();
+                ctx.arc(px, py, 12, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(59, 130, 246, 0.15)';
+                ctx.fill();
+
+                ctx.beginPath();
+                ctx.arc(px, py, 6, 0, Math.PI * 2);
+                ctx.fillStyle = i === selectedTokenIndex ? '#ec4899' : '#3b82f6';
+                ctx.fill();
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                ctx.font = 'bold 12px Inter';
+                ctx.fillStyle = '#ffffff';
+                ctx.fillText(`${token.original}`, px + 10, py + 4);
+            });
+        }
+
+        // --- STEP 2: QUERY & KEY MATCHING LOGIC ---
+        function renderQueryKeyStep() {
+            // 1. Render Selector Buttons for Query Word
+            const selector = document.getElementById('query-tokens-selector');
+            selector.innerHTML = '';
+
+            tokens.forEach((t, i) => {
+                const btn = document.createElement('button');
+                const isSel = i === queryTokenIndex;
+                btn.className = `px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                    isSel 
+                    ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/20 scale-105 ring-2 ring-amber-400' 
+                    : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                }`;
+                btn.innerText = `"${t.original}"`;
+                btn.onclick = () => {
+                    queryTokenIndex = i;
+                    renderQueryKeyStep();
+                };
+                selector.appendChild(btn);
+            });
+
+            // 2. Active Query Details
+            const activeQuery = tokens[queryTokenIndex];
+            document.getElementById('active-query-word').innerText = `"${activeQuery.original}"`;
+            document.getElementById('active-query-desc').innerHTML = `
+                <i class="fa-solid fa-quote-left mr-1.5 opacity-60"></i>
+                ${activeQuery.queryIntent}
+            `;
+
+            // 3. Compare with all Keys (K)
+            const keyList = document.getElementById('key-matching-list');
+            keyList.innerHTML = '';
+
+            const scores = calculateAttentionMatrix()[queryTokenIndex];
+
+            tokens.forEach((kToken, kIdx) => {
+                const matchScore = scores[kIdx];
+                const scorePct = Math.round(matchScore * 100);
+
+                const item = document.createElement('div');
+                item.className = `p-3.5 rounded-xl border transition-all ${
+                    kIdx === queryTokenIndex 
+                    ? 'bg-slate-900/40 border-slate-800 opacity-60' 
+                    : 'bg-slate-900/80 border-emerald-500/30 hover:border-emerald-500/60'
+                }`;
+
+                item.innerHTML = `
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="flex items-center gap-2">
+                            <span class="px-2 py-0.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs font-bold rounded-lg">
+                                Key: "${kToken.original}"
+                            </span>
+                            <span class="text-[11px] text-slate-400">${kToken.pos}</span>
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <span class="text-xs text-slate-400">Affinità / Score:</span>
+                            <span class="font-mono text-xs font-bold ${scorePct > 40 ? 'text-emerald-400' : 'text-slate-300'}">${scorePct}%</span>
+                        </div>
+                    </div>
+                    
+                    <p class="text-xs text-slate-300 mb-2">
+                        <i class="fa-solid fa-tag text-emerald-400/70 mr-1"></i>
+                        <strong>Offerta (Key):</strong> ${kToken.keyLabel}
+                    </p>
+
+                    <div class="w-full h-2 bg-slate-950 rounded-full overflow-hidden border border-slate-800">
+                        <div class="h-full bg-gradient-to-r from-emerald-600 to-amber-400 transition-all duration-500" style="width: ${scorePct}%"></div>
+                    </div>
+                `;
+
+                keyList.appendChild(item);
+            });
+        }
+
+        // --- STEP 3: ASYMMETRIC ATTENTION & DIRECTED GRAPH ---
+        function calculateAttentionMatrix() {
+            const n = tokens.length;
+            const matrix = Array(n).fill(0).map(() => Array(n).fill(0));
+
+            for (let i = 0; i < n; i++) {
+                let rowSum = 0;
+                for (let j = 0; j < n; j++) {
+                    let score = cosineSimilarity(tokens[i].dims, tokens[j].dims);
+                    
+                    // Asimmetria intuitiva: verbi cercano fortemente soggetti e oggetti
+                    if (tokens[i].pos === "Verbo" && tokens[j].pos === "Sostantivo") {
+                        score += 0.9;
+                    }
+                    // Articolo cerca il sostantivo a destra
+                    if (tokens[i].pos === "Articolo" && tokens[j].pos === "Sostantivo" && j > i) {
+                        score += 0.7;
+                    }
+
+                    if (i === j) score += 0.2; // Self focus minoritario
+
+                    matrix[i][j] = Math.exp(score);
+                    rowSum += matrix[i][j];
+                }
+                
+                for (let j = 0; j < n; j++) {
+                    matrix[i][j] = matrix[i][j] / rowSum;
+                }
+            }
+            return matrix;
+        }
+
+        function renderAttentionStep() {
+            const attMatrix = calculateAttentionMatrix();
+
+            const topRow = document.getElementById('tokens-top-row');
+            const bottomRow = document.getElementById('tokens-bottom-row');
+            topRow.innerHTML = '';
+            bottomRow.innerHTML = '';
+
+            tokens.forEach((t, i) => {
+                // Top Node (Key)
+                const topNode = document.createElement('div');
+                topNode.id = `top-token-${i}`;
+                topNode.className = 'px-3 py-1.5 rounded-lg bg-slate-900 border border-emerald-500/40 text-xs text-emerald-300 font-medium shadow';
+                topNode.innerText = t.original;
+                topRow.appendChild(topNode);
+
+                // Bottom Node (Query)
+                const isFocus = i === focusAttentionIndex;
+                const bottomNode = document.createElement('button');
+                bottomNode.id = `bottom-token-${i}`;
+                bottomNode.className = `px-3.5 py-2 rounded-xl text-xs font-bold transition-all shadow-md ${
+                    isFocus ? 'bg-amber-400 text-slate-950 scale-105 ring-2 ring-amber-300 font-extrabold' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                }`;
+                bottomNode.innerText = t.original;
+                bottomNode.onclick = () => {
+                    focusAttentionIndex = i;
+                    renderAttentionStep();
+                    drawAttentionArcs();
+                };
+                bottomRow.appendChild(bottomNode);
+            });
+
+            // Render Matrix Grid
+            const grid = document.getElementById('attention-matrix-grid');
+            grid.innerHTML = '';
+
+            const headerRow = document.createElement('div');
+            headerRow.className = 'flex gap-1 mb-1 ml-16';
+            tokens.forEach(t => {
+                const th = document.createElement('div');
+                th.className = 'w-9 text-[10px] text-emerald-400 font-bold font-mono text-center truncate';
+                th.innerText = t.original;
+                headerRow.appendChild(th);
+            });
+            grid.appendChild(headerRow);
+
+            tokens.forEach((rowToken, rIdx) => {
+                const rowEl = document.createElement('div');
+                rowEl.className = 'flex items-center gap-1 mb-1';
+
+                const label = document.createElement('div');
+                label.className = 'w-16 text-[10px] text-amber-300 font-bold truncate text-right pr-2';
+                label.innerText = rowToken.original;
+                rowEl.appendChild(label);
+
+                tokens.forEach((colToken, cIdx) => {
+                    const val = attMatrix[rIdx][cIdx];
+                    const alpha = val.toFixed(2);
+                    const cell = document.createElement('div');
+                    cell.className = 'w-9 h-8 rounded flex items-center justify-center text-[10px] font-mono heat-cell cursor-pointer';
+                    cell.style.backgroundColor = `rgba(236, 72, 153, ${alpha})`;
+                    cell.style.color = alpha > 0.4 ? '#ffffff' : '#94a3b8';
+                    cell.innerText = (val * 100).toFixed(0);
+                    cell.title = `Query "${rowToken.original}" -> Key "${colToken.original}": ${(val*100).toFixed(0)}%`;
+                    
+                    cell.onclick = () => {
+                        focusAttentionIndex = rIdx;
+                        renderAttentionStep();
+                        drawAttentionArcs();
+                    };
+
+                    rowEl.appendChild(cell);
+                });
+
+                grid.appendChild(rowEl);
+            });
+
+            updateAttentionExplanation();
+        }
+
+        function drawAttentionArcs() {
+            const svg = document.getElementById('attention-svg');
+            if (!svg) return;
+            const container = svg.parentElement.getBoundingClientRect();
+            svg.setAttribute('width', container.width);
+            svg.setAttribute('height', container.height);
+
+            // Keep marker defs
+            const defs = svg.querySelector('defs').outerHTML;
+            svg.innerHTML = defs;
+
+            const attMatrix = calculateAttentionMatrix();
+            const focusRow = attMatrix[focusAttentionIndex];
+
+            const focusEl = document.getElementById(`bottom-token-${focusAttentionIndex}`);
+            if (!focusEl) return;
+            const focusRect = focusEl.getBoundingClientRect();
+            const startX = focusRect.left + focusRect.width / 2 - container.left;
+            const startY = focusRect.top - container.top;
+
+            tokens.forEach((t, colIdx) => {
+                const targetEl = document.getElementById(`top-token-${colIdx}`);
+                if (!targetEl) return;
+
+                const targetRect = targetEl.getBoundingClientRect();
+                const endX = targetRect.left + targetRect.width / 2 - container.left;
+                const endY = targetRect.bottom - container.top;
+
+                const weight = focusRow[colIdx];
+                const strokeWidth = Math.max(1, weight * 7);
+                const opacity = Math.max(0.2, weight);
+
+                const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                const controlY = (startY + endY) / 2;
+                const d = `M ${startX} ${startY} C ${startX} ${controlY}, ${endX} ${controlY}, ${endX} ${endY}`;
+
+                path.setAttribute('d', d);
+                path.setAttribute('fill', 'none');
+                path.setAttribute('stroke', '#ec4899');
+                path.setAttribute('stroke-width', strokeWidth);
+                path.setAttribute('stroke-opacity', opacity);
+                path.setAttribute('marker-end', 'url(#arrowhead)');
+
+                svg.appendChild(path);
+            });
+        }
+
+        function updateAttentionExplanation() {
+            const queryToken = tokens[focusAttentionIndex];
+            const attMatrix = calculateAttentionMatrix();
+            const rowScores = attMatrix[focusAttentionIndex];
+
+            let maxIdx = 0;
+            let maxVal = -1;
+            rowScores.forEach((v, i) => {
+                if (v > maxVal) {
+                    maxVal = v;
+                    maxIdx = i;
+                }
+            });
+
+            const topKeyToken = tokens[maxIdx];
+
+            // Calcola l'attenzione contraria per dimostrare l'asimmetria
+            const reverseVal = attMatrix[maxIdx][focusAttentionIndex];
+
+            const expText = document.getElementById('attention-explanation-text');
+            expText.innerHTML = `
+                La Query <strong class="text-amber-300">"${queryToken.original}"</strong> cerca informazioni e trova il massimo riscontro (${(maxVal * 100).toFixed(0)}%) nella Key <strong class="text-emerald-300">"${topKeyToken.original}"</strong>.
+                <br><br>
+                <strong>Esempio di asimmetria:</strong> Se invertiamo la ricerca, la Query <strong class="text-amber-300">"${topKeyToken.original}"</strong> assegna solo il <strong>${(reverseVal * 100).toFixed(0)}%</strong> alla Key <strong class="text-emerald-300">"${queryToken.original}"</strong>. La relazione di ricerca non è reciproca!
+            `;
+        }
+
+        function cosineSimilarity(vecA, vecB) {
+            let dotProduct = 0;
+            let normA = 0;
+            let normB = 0;
+            for (let i = 0; i < vecA.length; i++) {
+                dotProduct += vecA[i] * vecB[i];
+                normA += vecA[i] * vecA[i];
+                normB += vecB[i] * vecB[i];
+            }
+            if (normA === 0 || normB === 0) return 0;
+            return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
+        }
+    </script>
+</body>
+</html>
