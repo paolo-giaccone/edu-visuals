@@ -3,27 +3,140 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My JavaScript Webpage</title>
+    <title>Educational Visualizations</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            text-align: center;
-            margin-top: 50px;
+        :root {
+            --bg-color: #f8f9fa;
+            --card-bg: #ffffff;
+            --text-color: #212529;
+            --text-muted: #6c757d;
+            --border-color: #e9ecef;
+            --primary-color: #0d6efd;
+            --primary-hover: #0b5ed7;
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
         }
-        button {
-            padding: 10px 20px;
-            font-size: 16px;
-            cursor: pointer;
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.6;
+            margin: 0;
+            padding: 2rem 1rem;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        header {
+            margin-bottom: 2.5rem;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+            color: #111827;
+        }
+
+        p.subtitle {
+            color: var(--text-muted);
+            font-size: 1.1rem;
+            margin: 0;
+        }
+
+        section {
+            background: var(--card-bg);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border-color);
+        }
+
+        h2 {
+            font-size: 1.25rem;
+            margin-top: 0;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid var(--border-color);
+            color: #374151;
+        }
+
+        ul {
+            list-style-type: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        li {
+            margin-bottom: 0.75rem;
+        }
+
+        li:last-child {
+            margin-bottom: 0;
+        }
+
+        a {
+            display: inline-block;
+            color: var(--primary-color);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.15s ease-in-out;
+        }
+
+        a:hover {
+            color: var(--primary-hover);
+            text-decoration: underline;
+        }
+
+        /* External link indicator icon */
+        a::after {
+            content: " ↗";
+            font-size: 0.85em;
+            vertical-align: super;
         }
     </style>
 </head>
 <body>
 
-    <h1>Welcome to My Website!</h1>
-    <p id="message">Click the button below to see JavaScript in action:</p>
-    <button id="clickBtn">Click Me</button>
+    <div class="container">
+        <header>
+            <h1>Interactive Educational Visualizations</h1>
+            <p class="subtitle">Index of interactive modules and architectural simulations</p>
+        </header>
 
-    <!-- Link your JavaScript file -->
-    <script src="script.js"></script>
+        <!-- Section: Datacenter Energy -->
+        <section>
+            <h2>Datacenter Energy</h2>
+            <ul>
+                <li>
+                    <a href="https://paolo-giaccone.github.io/edu-visuals/datacenter-energy/cmos_energy_tradeoff.html" target="_blank" rel="noopener noreferrer">
+                        CMOS Energy Tradeoff
+                    </a>
+                </li>
+                <li>
+                    <a href="https://paolo-giaccone.github.io/edu-visuals/datacenter-energy/datacenter_power_onoff.html" target="_blank" rel="noopener noreferrer">
+                        Datacenter Power On/Off Strategy
+                    </a>
+                </li>
+            </ul>
+        </section>
+
+        <!-- Section: LLM Embedding & Attention -->
+        <section>
+            <h2>LLM Embedding and Attention</h2>
+            <ul>
+                <li>
+                    <a href="https://paolo-giaccone.github.io/edu-visuals/LLM/embedding_attention_explorer.html" target="_blank" rel="noopener noreferrer">
+                        Embedding &amp; Attention Explorer
+                    </a>
+                </li>
+            </ul>
+        </section>
+    </div>
+
 </body>
 </html>
