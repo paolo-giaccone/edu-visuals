@@ -1,0 +1,1193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Transformer Vector Space & Attention Visualizer</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            brand: {
+              50: '#f0f6ff',
+              500: '#3b82f6',
+              600: '#2563eb',
+              900: '#1e3a8a',
+            },
+            geo: '#10b981',    // Emerald green for geographical semantics
+            fin: '#f59e0b',    // Amber/Gold for financial semantics
+            neutral: '#8b5cf6',// Purple for general/neutral words
+            target: '#ec4899', // Pink/Rose for focal polysemous word
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      background-color: #0b0f19;
+      color: #f3f4f6;
+      font-family: 'Inter', sans-serif;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #111827;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #374151;
+      border-radius: 3px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: #4b5563;
+    }
+    canvas {
+      touch-action: none;
+    }
+  </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden bg-slate-950 text-slate-100">
+
+  <!-- Header Bar -->
+  <header class="h-14 border-b border-slate-800 bg-slate-900/80 backdrop-blur-md px-6 flex items-center justify-between shrink-0 z-20">
+    <div class="flex items-center space-x-3">
+      <div class="w-8 h-8 rounded-lg bg-gradient-to-tr from-brand-600 to-indigo-500 flex items-center justify-center font-bold text-white shadow-lg shadow-brand-500/20">
+        $\vec{v}$
+      </div>
+      <div>
+        <h1 class="font-bold text-sm md:text-base leading-tight tracking-wide text-white">Transformer Layer Attention Explorer</h1>
+        <p class="text-xs text-slate-400 hidden sm:block">Visualizing contextual embedding trajectories through self-attention layers</p>
+      </div>
+    </div>
+    
+    <div class="flex items-center space-x-4">
+      <div class="flex items-center space-x-2 text-xs">
+        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-geo/10 text-geo border border-geo/20">
+          <span class="w-2 h-2 rounded-full bg-geo"></span> Geographic
+        </span>
+        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-fin/10 text-fin border border-fin/20">
+          <span class="w-2 h-2 rounded-full bg-fin"></span> Financial
+        </span>
+        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-target/10 text-target border border-target/20">
+          <span class="w-2 h-2 rounded-full bg-target animate-pulse"></span> Polysemous Target
+        </span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Layout -->
+  <div class="flex-1 flex overflow-hidden relative">
+
+    <!-- Left Controls & Visualization Area -->
+    <div class="flex-1 flex flex-col min-w-0 border-r border-slate-800">
+      
+      <!-- Top Sentence Control Panel -->
+      <div class="p-4 border-b border-slate-800 bg-slate-900/50 flex flex-wrap gap-3 items-center justify-between">
+        <div class="flex items-center space-x-3 flex-1 min-w-[300px]">
+          <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider whitespace-nowrap">Sentence Preset:</label>
+          <select id="sentenceSelect" class="bg-slate-800 border border-slate-700 text-sm rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-brand-500 focus:outline-none text-slate-200 w-full max-w-md">
+            <option value="river">"The bank of the river was muddy." (Geographic shift)</option>
+            <option value="finance">"The bank approved the commercial loan." (Financial shift)</option>
+            <option value="ambiguous">"He sat near the bank yesterday." (Weak context)</option>
+            <option value="custom">Custom Input Sentence...</option>
+          </select>
+        </div>
+
+        <div id="customInputContainer" class="hidden flex-1 flex items-center space-x-2 min-w-[280px]">
+          <input type="text" id="customSentenceInput" placeholder="Type a sentence containing 'bank'..." 
+                 class="bg-slate-800 border border-slate-700 text-sm rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-brand-500 focus:outline-none text-slate-200 w-full">
+          <button id="applyCustomBtn" class="px-3 py-1.5 bg-brand-600 hover:bg-brand-500 text-white rounded-lg text-xs font-medium transition-colors">Apply</button>
+        </div>
+      </div>
+
+      <!-- Canvas & Interactive Grid Container -->
+      <div class="flex-1 relative bg-slate-950 flex flex-col">
+        
+        <!-- Overlay Canvas for 2D Embedding Space -->
+        <div class="relative flex-1 w-full h-full overflow-hidden">
+          <canvas id="vectorCanvas" class="absolute inset-0 w-full h-full cursor-crosshair"></canvas>
+          
+          <!-- Vector Space Legend / Orientation Hints -->
+          <div class="absolute top-4 left-4 pointer-events-none space-y-1 bg-slate-900/80 backdrop-blur border border-slate-800 p-3 rounded-lg text-xs">
+            <div class="font-semibold text-slate-300 border-b border-slate-800 pb-1 mb-1">Semantic Axes (Latent Space)</div>
+            <div class="text-slate-400">Y-Axis ($\uparrow$): <span class="text-fin font-medium">Financial / Monetary Context</span></div>
+            <div class="text-slate-400">X-Axis ($\rightarrow$): <span class="text-geo font-medium">Geographical / Nature Context</span></div>
+            <div class="text-slate-500 text-[10px] mt-1 pt-1 border-t border-slate-800/60">Distance = Semantic dissimilarity</div>
+          </div>
+
+          <!-- Hover Info Overlay Card -->
+          <div id="hoverInfo" class="absolute bottom-4 left-4 bg-slate-900/95 border border-slate-800 p-3 rounded-xl text-xs space-y-1 min-w-[200px] shadow-2xl opacity-0 transition-opacity pointer-events-none">
+            <div id="hoverTokenName" class="font-bold text-sm text-brand-500">Token</div>
+            <div class="text-slate-400">Vector Coordinates: <span id="hoverCoords" class="font-mono text-slate-200">[0.00, 0.00]</span></div>
+            <div class="text-slate-400">Category: <span id="hoverCategory" class="font-medium text-slate-300">Neutral</span></div>
+            <div class="text-slate-400">Top Attended Neighbor: <span id="hoverTopAttn" class="font-medium text-slate-200">-</span></div>
+          </div>
+        </div>
+
+        <!-- Layer Navigation Controls Footer -->
+        <div class="h-20 border-t border-slate-800 bg-slate-900/90 px-6 flex items-center justify-between shrink-0 z-10">
+          
+          <!-- Playback Controls -->
+          <div class="flex items-center space-x-3">
+            <button id="prevLayerBtn" class="p-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors disabled:opacity-40 disabled:hover:bg-slate-800">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+            </button>
+
+            <button id="playBtn" class="flex items-center space-x-2 px-4 py-2 rounded-lg bg-brand-600 hover:bg-brand-500 text-white font-medium text-xs transition-colors shadow-lg shadow-brand-600/20">
+              <svg id="playIcon" class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+              <span id="playText">Auto Play</span>
+            </button>
+
+            <button id="nextLayerBtn" class="p-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors disabled:opacity-40 disabled:hover:bg-slate-800">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+            </button>
+
+            <button id="resetBtn" class="p-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 transition-colors" title="Reset to Layer 0">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+            </button>
+          </div>
+
+          <!-- Slider & Layer Indicator -->
+          <div class="flex-1 max-w-md mx-8 flex items-center space-x-4">
+            <span class="text-xs font-medium text-slate-400 uppercase tracking-wider whitespace-nowrap">Layer Step:</span>
+            <input type="range" id="layerSlider" min="0" max="4" step="1" value="0"
+                   class="w-full accent-brand-500 h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer">
+            <div class="flex items-center justify-center w-8 h-8 rounded-lg bg-slate-800 border border-slate-700 font-mono text-sm font-bold text-brand-500 shrink-0" id="layerBadge">
+              L0
+            </div>
+          </div>
+
+          <!-- View Toggles -->
+          <div class="flex items-center space-x-2">
+            <button id="toggleRaysBtn" class="px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700 text-xs text-slate-300 hover:text-white transition-colors font-medium flex items-center space-x-1.5">
+              <span class="w-2 h-2 rounded-full bg-brand-500"></span>
+              <span>Attention Rays</span>
+            </button>
+            <button id="toggleTrajectoryBtn" class="px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700 text-xs text-slate-300 hover:text-white transition-colors font-medium flex items-center space-x-1.5">
+              <span class="w-2 h-2 rounded-full bg-target"></span>
+              <span>Trajectories</span>
+            </button>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Analytical Sidebar -->
+    <div class="w-96 border-l border-slate-800 bg-slate-900/60 backdrop-blur-md flex flex-col shrink-0 custom-scrollbar overflow-y-auto">
+      
+      <!-- Panel Header -->
+      <div class="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-900/80">
+        <h2 class="font-bold text-sm text-slate-200 flex items-center gap-2">
+          <svg class="w-4 h-4 text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+          Theoretical Mechanics
+        </h2>
+        <span id="layerStageTag" class="text-[10px] font-bold px-2 py-0.5 rounded bg-brand-500/10 text-brand-400 border border-brand-500/20">
+          Static Embedding
+        </span>
+      </div>
+
+      <div class="p-4 space-y-6 flex-1 text-xs">
+        
+        <!-- Dynamic Layer Breakdown Explanation -->
+        <div class="bg-slate-950/70 border border-slate-800 p-4 rounded-xl space-y-2">
+          <div class="font-semibold text-slate-200 text-sm flex items-center justify-between" id="breakdownTitle">
+            Layer 0: Static Input Embedding
+          </div>
+          <p class="text-slate-400 leading-relaxed" id="breakdownText">
+            Words are mapped to static coordinates using a frozen lookup table. At Layer 0, the word <strong>"bank"</strong> is ambiguous, residing at an intermediate location between financial and geographic concept clusters.
+          </p>
+        </div>
+
+        <!-- Attention Matrix Heatmap Card -->
+        <div class="space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="font-semibold text-slate-300 uppercase tracking-wider text-[11px]">Attention Matrix ($A = \text{softmax}(QK^T / \sqrt{d_k})$)</span>
+            <span class="text-[10px] text-slate-500">Row = Query, Col = Key</span>
+          </div>
+          <div class="bg-slate-950/80 border border-slate-800 p-3 rounded-xl">
+            <div id="heatmapGrid" class="grid gap-1 overflow-x-auto p-1">
+              <!-- Dynamically populated heatmap grid -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Target Word Inspection Matrix -->
+        <div class="space-y-3 bg-slate-950/50 border border-slate-800 p-4 rounded-xl">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+            <span class="font-semibold text-slate-200 text-xs">Vector Trajectory Monitor</span>
+            <span id="monitoredWordTag" class="font-mono text-target font-bold text-xs">"bank"</span>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3 pt-1">
+            <div class="bg-slate-900/90 p-2.5 rounded-lg border border-slate-800/80">
+              <div class="text-[10px] text-slate-500 mb-1">Current Coordinates</div>
+              <div id="monitorCoords" class="font-mono font-bold text-slate-200 text-xs">[0.00, 0.00]</div>
+            </div>
+            <div class="bg-slate-900/90 p-2.5 rounded-lg border border-slate-800/80">
+              <div class="text-[10px] text-slate-500 mb-1">Shift Magnitude ($\Delta \vec{v}$)</div>
+              <div id="monitorShift" class="font-mono font-bold text-brand-400 text-xs">0.00 units</div>
+            </div>
+          </div>
+
+          <div class="space-y-1.5 pt-2">
+            <div class="text-[11px] text-slate-400 font-medium">Top Attention Distribution ($A_{\text{bank}, j}$):</div>
+            <div id="topAttnBars" class="space-y-1.5">
+              <!-- Dynamically filled attention distribution bars -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Mathematical Mechanics Panel -->
+        <div class="border border-slate-800/80 bg-slate-950/40 p-4 rounded-xl space-y-3">
+          <div class="font-semibold text-slate-300 text-xs flex items-center gap-1.5">
+            <svg class="w-3.5 h-3.5 text-brand-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            Transformer Vector Math
+          </div>
+          <div class="font-mono text-[11px] text-slate-400 bg-slate-900/90 p-2.5 rounded-lg border border-slate-800 space-y-1">
+            <div class="text-brand-400">1. $Q_i = X_i W_Q, \quad K_j = X_j W_K$</div>
+            <div class="text-brand-400">2. $S_{ij} = (Q_i \cdot K_j) / \sqrt{d_k}$</div>
+            <div class="text-emerald-400">3. $A_{ij} = \exp(S_{ij}) / \sum_k \exp(S_{ik})$</div>
+            <div class="text-pink-400">4. $\vec{v}_i^{(L+1)} = \vec{v}_i^{(L)} + \sum_j A_{ij} (X_j W_V)$</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    /**
+     * Transformer 2D Vector Space Simulation Data & Engine
+     */
+
+    // Sentence presets and token positioning data across Transformer Layers (0 to 4)
+    const SENTENCE_PRESETS = {
+      river: {
+        text: "The bank of the river was muddy",
+        tokens: [
+          { text: "bank", category: "target", initial: [0.0, 0.1] },
+          { text: "river", category: "geo", initial: [3.2, -1.5] },
+          { text: "muddy", category: "geo", initial: [2.8, -2.8] },
+          { text: "water", category: "geo", initial: [3.5, 0.2] },
+          { text: "The", category: "neutral", initial: [-2.0, -1.0] },
+          { text: "of", category: "neutral", initial: [-2.5, 0.5] },
+          { text: "was", category: "neutral", initial: [-1.5, 2.0] }
+        ],
+        // Trajectories across layers L0 -> L4 for each word
+        trajectories: {
+          "bank":  [[0.0, 0.1],   [1.1, -0.6], [2.2, -1.3], [2.9, -1.9], [3.1, -2.2]],
+          "river": [[3.2, -1.5], [3.3, -1.6], [3.4, -1.7], [3.5, -1.8], [3.5, -1.8]],
+          "muddy": [[2.8, -2.8], [2.9, -2.8], [3.0, -2.9], [3.0, -3.0], [3.0, -3.0]],
+          "water": [[3.5, 0.2],  [3.5, 0.1],  [3.6, 0.0],  [3.6, -0.1], [3.6, -0.1]],
+          "The":   [[-2.0, -1.0],[ -2.0, -1.0],[-2.1, -1.0],[-2.1, -1.0],[-2.1, -1.0]],
+          "of":    [[-2.5, 0.5],  [-2.5, 0.5], [-2.5, 0.5], [-2.5, 0.5], [-2.5, 0.5]],
+          "was":   [[-1.5, 2.0],  [-1.5, 2.0], [-1.5, 2.0], [-1.5, 2.0], [-1.5, 2.0]]
+        },
+        // Attention matrices for layers 0-4 (Row = Query token, Col = Key token)
+        attentionMatrices: {
+          0: [ // Static Layer (Uniform self-focus baseline)
+            [0.50, 0.10, 0.10, 0.10, 0.05, 0.10, 0.05], // bank
+            [0.10, 0.60, 0.15, 0.10, 0.02, 0.01, 0.02], // river
+            [0.10, 0.20, 0.60, 0.05, 0.02, 0.01, 0.02], // muddy
+            [0.10, 0.25, 0.15, 0.45, 0.02, 0.01, 0.02], // water
+            [0.10, 0.05, 0.05, 0.05, 0.70, 0.03, 0.02], // The
+            [0.10, 0.05, 0.05, 0.05, 0.05, 0.65, 0.05], // of
+            [0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.70]  // was
+          ],
+          1: [ // Layer 1: Local context assembly
+            [0.25, 0.35, 0.25, 0.08, 0.02, 0.03, 0.02], // bank attends strongly to river & muddy
+            [0.15, 0.45, 0.25, 0.12, 0.01, 0.01, 0.01],
+            [0.10, 0.30, 0.50, 0.08, 0.01, 0.00, 0.01],
+            [0.05, 0.35, 0.15, 0.42, 0.01, 0.01, 0.01],
+            [0.05, 0.02, 0.02, 0.01, 0.85, 0.03, 0.02],
+            [0.10, 0.15, 0.05, 0.02, 0.08, 0.55, 0.05],
+            [0.02, 0.05, 0.15, 0.02, 0.05, 0.05, 0.66]
+          ],
+          2: [ // Layer 2: Deep Contextual Shift
+            [0.12, 0.48, 0.32, 0.05, 0.01, 0.01, 0.01], // High attention lock on "river" & "muddy"
+            [0.08, 0.52, 0.30, 0.08, 0.00, 0.01, 0.01],
+            [0.05, 0.35, 0.55, 0.04, 0.00, 0.00, 0.01],
+            [0.02, 0.40, 0.18, 0.39, 0.00, 0.00, 0.01],
+            [0.02, 0.01, 0.01, 0.01, 0.92, 0.02, 0.01],
+            [0.05, 0.20, 0.05, 0.01, 0.04, 0.62, 0.03],
+            [0.01, 0.02, 0.20, 0.01, 0.03, 0.03, 0.70]
+          ],
+          3: [ // Layer 3: Semantic Consolidation
+            [0.08, 0.52, 0.36, 0.03, 0.00, 0.00, 0.01],
+            [0.05, 0.55, 0.32, 0.07, 0.00, 0.00, 0.01],
+            [0.03, 0.38, 0.57, 0.01, 0.00, 0.00, 0.01],
+            [0.01, 0.45, 0.20, 0.33, 0.00, 0.00, 0.01],
+            [0.01, 0.00, 0.00, 0.00, 0.96, 0.02, 0.01],
+            [0.02, 0.22, 0.04, 0.00, 0.02, 0.69, 0.01],
+            [0.00, 0.01, 0.22, 0.00, 0.02, 0.02, 0.73]
+          ],
+          4: [ // Layer 4: Fully Contextualized Output
+            [0.05, 0.55, 0.38, 0.01, 0.00, 0.00, 0.01],
+            [0.03, 0.58, 0.34, 0.04, 0.00, 0.00, 0.01],
+            [0.02, 0.40, 0.57, 0.00, 0.00, 0.00, 0.01],
+            [0.01, 0.48, 0.20, 0.30, 0.00, 0.00, 0.01],
+            [0.00, 0.00, 0.00, 0.00, 0.98, 0.01, 0.01],
+            [0.01, 0.25, 0.03, 0.00, 0.01, 0.69, 0.01],
+            [0.00, 0.01, 0.25, 0.00, 0.01, 0.01, 0.72]
+          ]
+        }
+      },
+      finance: {
+        text: "The bank approved the commercial loan",
+        tokens: [
+          { text: "bank", category: "target", initial: [0.0, 0.1] },
+          { text: "loan", category: "fin", initial: [-3.2, 2.5] },
+          { text: "approved", category: "fin", initial: [-2.5, 3.2] },
+          { text: "money", category: "fin", initial: [-3.5, 1.2] },
+          { text: "The", category: "neutral", initial: [-2.0, -1.0] },
+          { text: "commercial", category: "fin", initial: [-1.8, 2.2] }
+        ],
+        trajectories: {
+          "bank":       [[0.0, 0.1],   [-1.2, 1.1], [-2.3, 2.0], [-2.9, 2.6], [-3.2, 2.8]],
+          "loan":       [[-3.2, 2.5],  [-3.3, 2.6], [-3.4, 2.6], [-3.5, 2.7], [-3.5, 2.7]],
+          "approved":   [[-2.5, 3.2],  [-2.6, 3.3], [-2.7, 3.3], [-2.7, 3.4], [-2.7, 3.4]],
+          "money":      [[-3.5, 1.2],  [-3.5, 1.3], [-3.6, 1.3], [-3.6, 1.4], [-3.6, 1.4]],
+          "The":        [[-2.0, -1.0], [-2.0, -1.0],[-2.1, -1.0],[-2.1, -1.0],[-2.1, -1.0]],
+          "commercial": [[-1.8, 2.2],  [-1.9, 2.3], [-2.0, 2.4], [-2.0, 2.4], [-2.0, 2.4]]
+        },
+        attentionMatrices: {
+          0: [
+            [0.50, 0.15, 0.15, 0.10, 0.05, 0.05],
+            [0.10, 0.60, 0.15, 0.10, 0.02, 0.03],
+            [0.10, 0.20, 0.55, 0.05, 0.05, 0.05],
+            [0.10, 0.25, 0.10, 0.50, 0.02, 0.03],
+            [0.10, 0.05, 0.05, 0.05, 0.70, 0.05],
+            [0.05, 0.25, 0.15, 0.05, 0.05, 0.45]
+          ],
+          1: [
+            [0.20, 0.35, 0.30, 0.08, 0.02, 0.05], // bank attends strongly to loan & approved
+            [0.10, 0.50, 0.25, 0.10, 0.01, 0.04],
+            [0.12, 0.30, 0.45, 0.05, 0.01, 0.07],
+            [0.05, 0.30, 0.15, 0.45, 0.01, 0.04],
+            [0.05, 0.02, 0.02, 0.01, 0.88, 0.02],
+            [0.03, 0.35, 0.20, 0.05, 0.02, 0.35]
+          ],
+          2: [
+            [0.10, 0.45, 0.38, 0.04, 0.01, 0.02],
+            [0.05, 0.55, 0.30, 0.08, 0.00, 0.02],
+            [0.08, 0.35, 0.50, 0.03, 0.00, 0.04],
+            [0.02, 0.35, 0.18, 0.43, 0.00, 0.02],
+            [0.02, 0.01, 0.01, 0.00, 0.95, 0.01],
+            [0.01, 0.42, 0.25, 0.04, 0.01, 0.27]
+          ],
+          3: [
+            [0.05, 0.50, 0.42, 0.02, 0.00, 0.01],
+            [0.03, 0.58, 0.33, 0.05, 0.00, 0.01],
+            [0.04, 0.38, 0.54, 0.02, 0.00, 0.02],
+            [0.01, 0.38, 0.20, 0.40, 0.00, 0.01],
+            [0.01, 0.00, 0.00, 0.00, 0.98, 0.01],
+            [0.00, 0.46, 0.28, 0.03, 0.00, 0.23]
+          ],
+          4: [
+            [0.03, 0.52, 0.44, 0.01, 0.00, 0.00],
+            [0.02, 0.60, 0.34, 0.04, 0.00, 0.00],
+            [0.02, 0.40, 0.56, 0.01, 0.00, 0.01],
+            [0.00, 0.40, 0.21, 0.38, 0.00, 0.01],
+            [0.00, 0.00, 0.00, 0.00, 0.99, 0.00],
+            [0.00, 0.48, 0.30, 0.02, 0.00, 0.20]
+          ]
+        }
+      },
+      ambiguous: {
+        text: "He sat near the bank yesterday",
+        tokens: [
+          { text: "bank", category: "target", initial: [0.0, 0.1] },
+          { text: "sat", category: "neutral", initial: [-0.5, -1.8] },
+          { text: "near", category: "geo", initial: [1.2, -0.8] },
+          { text: "yesterday", category: "neutral", initial: [-1.8, -1.5] },
+          { text: "He", category: "neutral", initial: [-2.2, 0.5] },
+          { text: "the", category: "neutral", initial: [-1.0, 1.5] }
+        ],
+        trajectories: {
+          "bank":      [[0.0, 0.1],  [0.3, -0.2], [0.6, -0.4], [0.8, -0.6], [0.9, -0.7]],
+          "sat":       [[-0.5,-1.8], [-0.5,-1.8], [-0.6,-1.8], [-0.6,-1.8], [-0.6,-1.8]],
+          "near":      [[1.2, -0.8], [1.3, -0.8], [1.3, -0.9], [1.4, -0.9], [1.4, -0.9]],
+          "yesterday": [[-1.8,-1.5], [-1.8,-1.5], [-1.8,-1.5], [-1.8,-1.5], [-1.8,-1.5]],
+          "He":        [[-2.2, 0.5], [-2.2, 0.5], [-2.2, 0.5], [-2.2, 0.5], [-2.2, 0.5]],
+          "the":       [[-1.0, 1.5], [-1.0, 1.5], [-1.0, 1.5], [-1.0, 1.5], [-1.0, 1.5]]
+        },
+        attentionMatrices: {
+          0: [
+            [0.60, 0.10, 0.15, 0.05, 0.05, 0.05],
+            [0.10, 0.65, 0.10, 0.05, 0.05, 0.05],
+            [0.15, 0.15, 0.55, 0.05, 0.05, 0.05],
+            [0.05, 0.10, 0.05, 0.70, 0.05, 0.05],
+            [0.05, 0.15, 0.05, 0.05, 0.65, 0.05],
+            [0.05, 0.05, 0.05, 0.05, 0.05, 0.75]
+          ],
+          1: [
+            [0.45, 0.18, 0.25, 0.05, 0.04, 0.03],
+            [0.12, 0.60, 0.15, 0.05, 0.05, 0.03],
+            [0.20, 0.18, 0.50, 0.04, 0.04, 0.04],
+            [0.04, 0.12, 0.04, 0.72, 0.05, 0.03],
+            [0.04, 0.20, 0.04, 0.04, 0.64, 0.04],
+            [0.03, 0.04, 0.04, 0.03, 0.04, 0.82]
+          ],
+          2: [
+            [0.35, 0.22, 0.32, 0.04, 0.04, 0.03],
+            [0.10, 0.62, 0.18, 0.04, 0.04, 0.02],
+            [0.22, 0.20, 0.48, 0.04, 0.03, 0.03],
+            [0.03, 0.12, 0.03, 0.75, 0.04, 0.03],
+            [0.03, 0.22, 0.03, 0.03, 0.66, 0.03],
+            [0.02, 0.03, 0.03, 0.02, 0.03, 0.87]
+          ],
+          3: [
+            [0.30, 0.24, 0.36, 0.04, 0.03, 0.03],
+            [0.08, 0.64, 0.20, 0.03, 0.03, 0.02],
+            [0.24, 0.22, 0.45, 0.03, 0.03, 0.03],
+            [0.02, 0.12, 0.02, 0.78, 0.04, 0.02],
+            [0.02, 0.24, 0.02, 0.02, 0.68, 0.02],
+            [0.01, 0.02, 0.02, 0.02, 0.02, 0.91]
+          ],
+          4: [
+            [0.28, 0.25, 0.38, 0.03, 0.03, 0.03],
+            [0.06, 0.65, 0.22, 0.03, 0.02, 0.02],
+            [0.25, 0.23, 0.44, 0.03, 0.03, 0.02],
+            [0.02, 0.12, 0.02, 0.80, 0.03, 0.01],
+            [0.02, 0.25, 0.02, 0.02, 0.68, 0.01],
+            [0.01, 0.02, 0.02, 0.01, 0.01, 0.93]
+          ]
+        }
+      }
+    };
+
+    // Theoretical Breakdown Texts per Layer
+    const LAYER_THEORY = {
+      0: {
+        title: "Layer 0: Static Embedding Lookup",
+        stage: "Static Lookup",
+        text: "Words are converted into fixed coordinate vectors via a static vocabulary embedding table ($W_{emb}$). Context is not yet incorporated. Polysemous words like <strong>'bank'</strong> reside in an ambiguous central region between financial and geographical clusters."
+      },
+      1: {
+        title: "Layer 1: Local Attention & Q/K Projections",
+        stage: "Attention Scores",
+        text: "Each token projects Query ($Q = XW_Q$) and Key ($K = XW_K$) vectors. Dot products $QK^T / \\sqrt{d_k}$ calculate initial alignment scores. The target word <strong>'bank'</strong> begins identifying relevant neighbors (e.g., 'river' or 'loan')."
+      },
+      2: {
+        title: "Layer 2: Contextual Value Blending",
+        stage: "Value Blending",
+        text: "Attention weights ($A = \\text{softmax}(S)$) act as blending ratios over Value vectors ($V = XW_V$). The embedding vector for <strong>'bank'</strong> physically shifts toward its highest-weighted neighbors in the vector space."
+      },
+      3: {
+        title: "Layer 3: Deep Trajectory Consolidation",
+        stage: "Deep Context",
+        text: "Multiple attention heads isolate distinct semantic aspects. Higher-order context strengthens the directional vector pull, locking <strong>'bank'</strong> firmly into its contextual cluster."
+      },
+      4: {
+        title: "Layer 4: Disambiguated Final Vector",
+        stage: "Final Vector",
+        text: "The embedding has completed its trajectory across layers. It no longer represents just the isolated word 'bank', but the full contextual meaning of the phrase, ready for output projection or downstream tasks."
+      }
+    };
+
+    // App State Management
+    let currentPresetKey = "river";
+    let currentLayer = 0;
+    let isPlaying = false;
+    let playInterval = null;
+    let showRays = true;
+    let showTrajectories = true;
+    let hoveredTokenIndex = null;
+
+    // Animated Position Tracking for Smooth Transitions
+    let animatedTokenPositions = []; // [{x, y, targetX, targetY}]
+
+    // Canvas DOM Elements
+    const canvas = document.getElementById("vectorCanvas");
+    const ctx = canvas.getContext("2d");
+
+    // UI DOM Elements
+    const sentenceSelect = document.getElementById("sentenceSelect");
+    const customContainer = document.getElementById("customInputContainer");
+    const customInput = document.getElementById("customSentenceInput");
+    const applyCustomBtn = document.getElementById("applyCustomBtn");
+    
+    const layerSlider = document.getElementById("layerSlider");
+    const layerBadge = document.getElementById("layerBadge");
+    const prevLayerBtn = document.getElementById("prevLayerBtn");
+    const nextLayerBtn = document.getElementById("nextLayerBtn");
+    const playBtn = document.getElementById("playBtn");
+    const playIcon = document.getElementById("playIcon");
+    const playText = document.getElementById("playText");
+    const resetBtn = document.getElementById("resetBtn");
+    const toggleRaysBtn = document.getElementById("toggleRaysBtn");
+    const toggleTrajectoryBtn = document.getElementById("toggleTrajectoryBtn");
+
+    const breakdownTitle = document.getElementById("breakdownTitle");
+    const breakdownText = document.getElementById("breakdownText");
+    const layerStageTag = document.getElementById("layerStageTag");
+    const heatmapGrid = document.getElementById("heatmapGrid");
+    
+    const hoverInfo = document.getElementById("hoverInfo");
+    const hoverTokenName = document.getElementById("hoverTokenName");
+    const hoverCoords = document.getElementById("hoverCoords");
+    const hoverCategory = document.getElementById("hoverCategory");
+    const hoverTopAttn = document.getElementById("hoverTopAttn");
+
+    const monitorCoords = document.getElementById("monitorCoords");
+    const monitorShift = document.getElementById("monitorShift");
+    const topAttnBars = document.getElementById("topAttnBars");
+    const monitoredWordTag = document.getElementById("monitoredWordTag");
+
+    /**
+     * Initialization & Event Listeners
+     */
+    function init() {
+      resizeCanvas();
+      window.addEventListener("resize", resizeCanvas);
+
+      // Event Listeners
+      sentenceSelect.addEventListener("change", (e) => {
+        if (e.target.value === "custom") {
+          customContainer.classList.remove("hidden");
+        } else {
+          customContainer.classList.add("hidden");
+          loadPreset(e.target.value);
+        }
+      });
+
+      applyCustomBtn.addEventListener("click", handleCustomSentence);
+      customInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") handleCustomSentence();
+      });
+
+      layerSlider.addEventListener("input", (e) => {
+        setLayer(parseInt(e.target.value, 10));
+      });
+
+      prevLayerBtn.addEventListener("click", () => setLayer(Math.max(0, currentLayer - 1)));
+      nextLayerBtn.addEventListener("click", () => setLayer(Math.min(4, currentLayer + 1)));
+      resetBtn.addEventListener("click", () => {
+        pauseAnimation();
+        setLayer(0);
+      });
+
+      playBtn.addEventListener("click", togglePlay);
+
+      toggleRaysBtn.addEventListener("click", () => {
+        showRays = !showRays;
+        toggleRaysBtn.classList.toggle("bg-slate-700", showRays);
+        draw();
+      });
+
+      toggleTrajectoryBtn.addEventListener("click", () => {
+        showTrajectories = !showTrajectories;
+        toggleTrajectoryBtn.classList.toggle("bg-slate-700", showTrajectories);
+        draw();
+      });
+
+      // Canvas Mouse Interactive Events
+      canvas.addEventListener("mousemove", handleCanvasMouseMove);
+      canvas.addEventListener("mouseleave", () => {
+        hoveredTokenIndex = null;
+        hoverInfo.classList.add("opacity-0");
+        draw();
+      });
+
+      // Load initial state
+      loadPreset("river");
+      requestAnimationFrame(animationLoop);
+    }
+
+    function resizeCanvas() {
+      const rect = canvas.parentElement.getBoundingClientRect();
+      canvas.width = rect.width * window.devicePixelRatio;
+      canvas.height = rect.height * window.devicePixelRatio;
+      ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+      draw();
+    }
+
+    /**
+     * Preset & Custom Data Loading
+     */
+    function loadPreset(key) {
+      pauseAnimation();
+      currentPresetKey = key;
+      const data = SENTENCE_PRESETS[key];
+      
+      // Initialize animated positions for Layer 0
+      animatedTokenPositions = data.tokens.map((token) => {
+        const coords = data.trajectories[token.text][0];
+        return { x: coords[0], y: coords[1], targetX: coords[0], targetY: coords[1] };
+      });
+
+      setLayer(0);
+    }
+
+    function handleCustomSentence() {
+      const text = customInput.value.trim();
+      if (!text) return;
+
+      const words = text.split(/\s+/).filter(w => w.length > 0).slice(0, 7);
+      const hasBank = words.some(w => w.toLowerCase().includes("bank"));
+      
+      // Determine semantic context bias based on keywords
+      const isGeo = /river|water|muddy|stream|lake|shore|field|tree|sat|sit|nature/i.test(text);
+      const isFin = /money|loan|approved|finance|dollar|deposit|check|account|vault/i.test(text);
+
+      const targetWord = hasBank ? words.find(w => w.toLowerCase().includes("bank")) : words[0];
+
+      // Dynamic trajectory generator for custom input
+      const tokens = words.map(w => ({
+        text: w,
+        category: w === targetWord ? "target" : (isGeo ? "geo" : (isFin ? "fin" : "neutral")),
+        initial: w === targetWord ? [0.0, 0.1] : [
+          (Math.random() * 4 - 2) * (isGeo ? 1 : -1),
+          (Math.random() * 4 - 2) * (isFin ? 1 : -1)
+        ]
+      }));
+
+      const trajectories = {};
+      tokens.forEach(t => {
+        if (t.text === targetWord) {
+          const targetX = isGeo ? 3.0 : (isFin ? -3.0 : 0.5);
+          const targetY = isGeo ? -2.0 : (isFin ? 2.5 : -0.8);
+          trajectories[t.text] = [
+            [0.0, 0.1],
+            [targetX * 0.3, targetY * 0.3],
+            [targetX * 0.6, targetY * 0.6],
+            [targetX * 0.85, targetY * 0.85],
+            [targetX, targetY]
+          ];
+        } else {
+          const [initX, initY] = t.initial;
+          trajectories[t.text] = [
+            [initX, initY],
+            [initX * 1.02, initY * 1.02],
+            [initX * 1.05, initY * 1.05],
+            [initX * 1.06, initY * 1.06],
+            [initX * 1.07, initY * 1.07]
+          ];
+        }
+      });
+
+      // Generate synthetic attention matrix
+      const num = tokens.length;
+      const attentionMatrices = {};
+      const targetIdx = tokens.findIndex(t => t.text === targetWord);
+
+      for (let l = 0; l <= 4; l++) {
+        const matrix = [];
+        for (let i = 0; i < num; i++) {
+          const row = new Array(num).fill(0.05);
+          if (i === targetIdx) {
+            row[targetIdx] = Math.max(0.05, 0.6 - l * 0.12);
+            const neighborIdx = (targetIdx + 1) % num;
+            row[neighborIdx] = Math.min(0.8, 0.2 + l * 0.15);
+          } else {
+            row[i] = 0.7;
+          }
+          // Normalize row
+          const sum = row.reduce((a, b) => a + b, 0);
+          matrix.push(row.map(v => v / sum));
+        }
+        attentionMatrices[l] = matrix;
+      }
+
+      // Store in memory & load
+      SENTENCE_PRESETS.custom = {
+        text: text,
+        tokens: tokens,
+        trajectories: trajectories,
+        attentionMatrices: attentionMatrices
+      };
+
+      loadPreset("custom");
+    }
+
+    /**
+     * Layer Control Functions
+     */
+    function setLayer(layerIndex) {
+      currentLayer = layerIndex;
+      layerSlider.value = currentLayer;
+      layerBadge.textContent = `L${currentLayer}`;
+      
+      prevLayerBtn.disabled = currentLayer === 0;
+      nextLayerBtn.disabled = currentLayer === 4;
+
+      const data = SENTENCE_PRESETS[currentPresetKey];
+
+      // Update target positions for smooth interpolation
+      data.tokens.forEach((token, idx) => {
+        const targetCoords = data.trajectories[token.text][currentLayer];
+        if (animatedTokenPositions[idx]) {
+          animatedTokenPositions[idx].targetX = targetCoords[0];
+          animatedTokenPositions[idx].targetY = targetCoords[1];
+        }
+      });
+
+      // Update Theory & Analytics Panels
+      updateTheoreticalPanel();
+      renderAttentionHeatmap();
+      updateTargetMonitor();
+      draw();
+    }
+
+    function togglePlay() {
+      if (isPlaying) {
+        pauseAnimation();
+      } else {
+        startAnimation();
+      }
+    }
+
+    function startAnimation() {
+      isPlaying = true;
+      playText.textContent = "Pause";
+      playIcon.innerHTML = `<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>`;
+
+      if (currentLayer >= 4) setLayer(0);
+
+      playInterval = setInterval(() => {
+        if (currentLayer < 4) {
+          setLayer(currentLayer + 1);
+        } else {
+          pauseAnimation();
+        }
+      }, 1800);
+    }
+
+    function pauseAnimation() {
+      isPlaying = false;
+      playText.textContent = "Auto Play";
+      playIcon.innerHTML = `<path d="M8 5v14l11-7z"/>`;
+      if (playInterval) clearInterval(playInterval);
+    }
+
+    /**
+     * Coordinate Projection (Vector Space -> Canvas Pixels)
+     */
+    function toCanvasCoords(vecX, vecY) {
+      const width = canvas.width / window.devicePixelRatio;
+      const height = canvas.height / window.devicePixelRatio;
+      
+      const centerX = width / 2;
+      const centerY = height / 2;
+      const scale = Math.min(width, height) / 10; // 10 units wide
+
+      return {
+        x: centerX + vecX * scale,
+        y: centerY - vecY * scale // Invert Y for Cartesian plane
+      };
+    }
+
+    function toVectorCoords(canvasX, canvasY) {
+      const width = canvas.width / window.devicePixelRatio;
+      const height = canvas.height / window.devicePixelRatio;
+      
+      const centerX = width / 2;
+      const centerY = height / 2;
+      const scale = Math.min(width, height) / 10;
+
+      return {
+        x: (canvasX - centerX) / scale,
+        y: (centerY - canvasY) / scale
+      };
+    }
+
+    /**
+     * Main Canvas Rendering Loop
+     */
+    function animationLoop() {
+      // Smoothly interpolate current positions to target positions
+      let needsRedraw = false;
+      animatedTokenPositions.forEach(pos => {
+        const dx = pos.targetX - pos.x;
+        const dy = pos.targetY - pos.y;
+        if (Math.abs(dx) > 0.001 || Math.abs(dy) > 0.001) {
+          pos.x += dx * 0.12; // Smooth lerp
+          pos.y += dy * 0.12;
+          needsRedraw = true;
+        } else {
+          pos.x = pos.targetX;
+          pos.y = pos.targetY;
+        }
+      });
+
+      draw();
+      requestAnimationFrame(animationLoop);
+    }
+
+    function draw() {
+      const width = canvas.width / window.devicePixelRatio;
+      const height = canvas.height / window.devicePixelRatio;
+
+      ctx.clearRect(0, 0, width, height);
+
+      // 1. Draw Grid Lines and Axes
+      drawGrid(width, height);
+
+      const data = SENTENCE_PRESETS[currentPresetKey];
+      const currentMatrix = data.attentionMatrices[currentLayer];
+
+      // 2. Draw Vector Trajectory Traces (Historical Path across L0 -> currentLayer)
+      if (showTrajectories) {
+        drawTrajectories(data);
+      }
+
+      // 3. Draw Attention Rays / Connection Lines
+      if (showRays && currentMatrix) {
+        drawAttentionRays(data, currentMatrix);
+      }
+
+      // 4. Draw Token Nodes & Labels
+      drawTokenNodes(data);
+    }
+
+    function drawGrid(width, height) {
+      const centerX = width / 2;
+      const centerY = height / 2;
+      const scale = Math.min(width, height) / 10;
+
+      ctx.strokeStyle = "#1e293b";
+      ctx.lineWidth = 1;
+
+      // Vertical & Horizontal Grid Lines
+      for (let x = -5; x <= 5; x++) {
+        const pos = centerX + x * scale;
+        ctx.beginPath();
+        ctx.moveTo(pos, 0);
+        ctx.lineTo(pos, height);
+        ctx.stroke();
+      }
+
+      for (let y = -5; y <= 5; y++) {
+        const pos = centerY - y * scale;
+        ctx.beginPath();
+        ctx.moveTo(0, pos);
+        ctx.lineTo(width, pos);
+        ctx.stroke();
+      }
+
+      // Main Axes
+      ctx.strokeStyle = "#334155";
+      ctx.lineWidth = 2;
+
+      // X Axis
+      ctx.beginPath();
+      ctx.moveTo(0, centerY);
+      ctx.lineTo(width, centerY);
+      ctx.stroke();
+
+      // Y Axis
+      ctx.beginPath();
+      ctx.moveTo(centerX, 0);
+      ctx.lineTo(centerX, height);
+      ctx.stroke();
+
+      // Axis Labels
+      ctx.fillStyle = "#64748b";
+      ctx.font = "10px JetBrains Mono";
+      ctx.fillText("+X (Nature/Geo)", width - 110, centerY - 8);
+      ctx.fillText("+Y (Finance)", centerX + 8, 15);
+      ctx.fillText("Origin (0,0)", centerX + 8, centerY + 14);
+    }
+
+    function drawTrajectories(data) {
+      data.tokens.forEach((token) => {
+        const trajectory = data.trajectories[token.text];
+        if (!trajectory) return;
+
+        ctx.beginPath();
+        for (let l = 0; l <= currentLayer; l++) {
+          const pt = toCanvasCoords(trajectory[l][0], trajectory[l][1]);
+          if (l === 0) ctx.moveTo(pt.x, pt.y);
+          else ctx.lineTo(pt.x, pt.y);
+        }
+
+        ctx.strokeStyle = token.category === "target" ? "rgba(236, 72, 153, 0.4)" : "rgba(100, 116, 139, 0.25)";
+        ctx.lineWidth = token.category === "target" ? 2.5 : 1.5;
+        ctx.setLineDash([4, 4]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Keyframe Dots on Trajectory
+        for (let l = 0; l <= currentLayer; l++) {
+          const pt = toCanvasCoords(trajectory[l][0], trajectory[l][1]);
+          ctx.beginPath();
+          ctx.arc(pt.x, pt.y, l === currentLayer ? 4 : 2, 0, Math.PI * 2);
+          ctx.fillStyle = token.category === "target" ? "#ec4899" : "#64748b";
+          ctx.fill();
+        }
+      });
+    }
+
+    function drawAttentionRays(data, matrix) {
+      data.tokens.forEach((qToken, qIdx) => {
+        const qPos = animatedTokenPositions[qIdx];
+        if (!qPos) return;
+
+        const qCanvas = toCanvasCoords(qPos.x, qPos.y);
+
+        data.tokens.forEach((kToken, kIdx) => {
+          if (qIdx === kIdx) return; // Skip self-loops for visual clarity
+
+          const weight = matrix[qIdx][kIdx];
+          if (weight < 0.05) return; // Filter weak noise
+
+          const kPos = animatedTokenPositions[kIdx];
+          if (!kPos) return;
+
+          const kCanvas = toCanvasCoords(kPos.x, kPos.y);
+
+          ctx.beginPath();
+          ctx.moveTo(qCanvas.x, qCanvas.y);
+          ctx.lineTo(kCanvas.x, kCanvas.y);
+
+          // Highlight rays when hovering or target word
+          const isTarget = qToken.category === "target";
+          const isHovered = hoveredTokenIndex === qIdx;
+
+          if (isHovered || (isTarget && hoveredTokenIndex === null)) {
+            ctx.strokeStyle = isTarget ? `rgba(236, 72, 153, ${weight * 1.5})` : `rgba(59, 130, 246, ${weight * 1.5})`;
+            ctx.lineWidth = weight * 6;
+          } else {
+            ctx.strokeStyle = `rgba(59, 130, 246, ${weight * 0.4})`;
+            ctx.lineWidth = weight * 3;
+          }
+          ctx.stroke();
+        });
+      });
+    }
+
+    function drawTokenNodes(data) {
+      data.tokens.forEach((token, idx) => {
+        const pos = animatedTokenPositions[idx];
+        if (!pos) return;
+
+        const p = toCanvasCoords(pos.x, pos.y);
+        const isHovered = hoveredTokenIndex === idx;
+        const isTarget = token.category === "target";
+
+        // Color designation
+        let color = "#8b5cf6"; // neutral
+        if (token.category === "geo") color = "#10b981";
+        if (token.category === "fin") color = "#f59e0b";
+        if (token.category === "target") color = "#ec4899";
+
+        // Outer Glow / Pulse Effect
+        if (isTarget || isHovered) {
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, isHovered ? 18 : 14, 0, Math.PI * 2);
+          ctx.fillStyle = color + "33"; // 20% opacity
+          ctx.fill();
+        }
+
+        // Central Node Circle
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, isTarget ? 8 : 6, 0, Math.PI * 2);
+        ctx.fillStyle = color;
+        ctx.shadowColor = color;
+        ctx.shadowBlur = isTarget || isHovered ? 12 : 4;
+        ctx.fill();
+        ctx.shadowBlur = 0; // Reset shadow
+
+        // Token Label Tag
+        ctx.font = `${isTarget ? 'bold 12px' : '11px'} Inter, sans-serif`;
+        const textWidth = ctx.measureText(token.text).width;
+
+        // Label Background Badge
+        ctx.fillStyle = "rgba(15, 23, 42, 0.85)";
+        ctx.strokeStyle = isTarget ? color : "#334155";
+        ctx.lineWidth = isTarget ? 1.5 : 1;
+        ctx.beginPath();
+        ctx.roundRect(p.x - textWidth / 2 - 6, p.y - 28, textWidth + 12, 18, 4);
+        ctx.fill();
+        ctx.stroke();
+
+        // Label Text
+        ctx.fillStyle = isTarget ? "#f472b6" : "#f3f4f6";
+        ctx.fillText(token.text, p.x - textWidth / 2, p.y - 15);
+      });
+    }
+
+    /**
+     * Hover Interaction Handler
+     */
+    function handleCanvasMouseMove(e) {
+      const rect = canvas.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+
+      const data = SENTENCE_PRESETS[currentPresetKey];
+      let foundIdx = null;
+
+      data.tokens.forEach((token, idx) => {
+        const pos = animatedTokenPositions[idx];
+        if (!pos) return;
+        const p = toCanvasCoords(pos.x, pos.y);
+        const dist = Math.hypot(p.x - mouseX, p.y - mouseY);
+
+        if (dist < 20) foundIdx = idx;
+      });
+
+      hoveredTokenIndex = foundIdx;
+
+      if (foundIdx !== null) {
+        const token = data.tokens[foundIdx];
+        const pos = animatedTokenPositions[foundIdx];
+        const matrix = data.attentionMatrices[currentLayer];
+        
+        // Find top attended token
+        let topAttnIdx = -1;
+        let maxWeight = -1;
+        matrix[foundIdx].forEach((w, i) => {
+          if (i !== foundIdx && w > maxWeight) {
+            maxWeight = w;
+            topAttnIdx = i;
+          }
+        });
+
+        hoverTokenName.textContent = `"${token.text}"`;
+        hoverTokenName.style.color = token.category === "target" ? "#ec4899" : (token.category === "geo" ? "#10b981" : (token.category === "fin" ? "#f59e0b" : "#8b5cf6"));
+        hoverCoords.textContent = `[${pos.x.toFixed(2)}, ${pos.y.toFixed(2)}]`;
+        hoverCategory.textContent = token.category.toUpperCase();
+        hoverTopAttn.textContent = topAttnIdx !== -1 ? `"${data.tokens[topAttnIdx].text}" (${(maxWeight * 100).toFixed(0)}%)` : "Self";
+
+        hoverInfo.style.left = `${mouseX + 15}px`;
+        hoverInfo.style.top = `${mouseY - 15}px`;
+        hoverInfo.classList.remove("opacity-0");
+      } else {
+        hoverInfo.classList.add("opacity-0");
+      }
+
+      draw();
+    }
+
+    /**
+     * Theoretical Breakdown & Heatmap Panel Updates
+     */
+    function updateTheoreticalPanel() {
+      const theory = LAYER_THEORY[currentLayer];
+      breakdownTitle.innerHTML = theory.title;
+      breakdownText.innerHTML = theory.text;
+      layerStageTag.textContent = theory.stage;
+    }
+
+    function renderAttentionHeatmap() {
+      const data = SENTENCE_PRESETS[currentPresetKey];
+      const matrix = data.attentionMatrices[currentLayer];
+      if (!matrix) return;
+
+      const numTokens = data.tokens.length;
+      heatmapGrid.style.gridTemplateColumns = `repeat(${numTokens + 1}, minmax(0, 1fr))`;
+      heatmapGrid.innerHTML = "";
+
+      // Header Row (Keys)
+      const emptyHeader = document.createElement("div");
+      heatmapGrid.appendChild(emptyHeader);
+
+      data.tokens.forEach(t => {
+        const headerCell = document.createElement("div");
+        headerCell.className = "text-[9px] font-mono font-bold text-slate-400 text-center truncate p-0.5";
+        headerCell.textContent = t.text.slice(0, 4);
+        headerCell.title = t.text;
+        heatmapGrid.appendChild(headerCell);
+      });
+
+      // Data Rows (Queries)
+      data.tokens.forEach((qToken, qIdx) => {
+        // Row Label
+        const rowLabel = document.createElement("div");
+        rowLabel.className = "text-[9px] font-mono font-bold text-slate-400 flex items-center truncate pr-1";
+        rowLabel.textContent = qToken.text.slice(0, 4);
+        rowLabel.title = qToken.text;
+        heatmapGrid.appendChild(rowLabel);
+
+        // Heatmap Cells
+        matrix[qIdx].forEach((weight, kIdx) => {
+          const cell = document.createElement("div");
+          const opacity = Math.min(1, weight * 1.2);
+          cell.className = "h-5 rounded text-[8px] font-mono flex items-center justify-center transition-all cursor-pointer";
+          cell.style.backgroundColor = `rgba(59, 130, 246, ${opacity})`;
+          cell.style.color = opacity > 0.4 ? "#ffffff" : "#94a3b8";
+          cell.textContent = weight.toFixed(2);
+          cell.title = `Query: "${qToken.text}" → Key: "${data.tokens[kIdx].text}"\nAttention Weight: ${weight.toFixed(3)}`;
+
+          // Hover interaction
+          cell.addEventListener("mouseenter", () => {
+            hoveredTokenIndex = qIdx;
+            draw();
+          });
+          cell.addEventListener("mouseleave", () => {
+            hoveredTokenIndex = null;
+            draw();
+          });
+
+          heatmapGrid.appendChild(cell);
+        });
+      });
+    }
+
+    function updateTargetMonitor() {
+      const data = SENTENCE_PRESETS[currentPresetKey];
+      const targetIdx = data.tokens.findIndex(t => t.category === "target");
+      if (targetIdx === -1) return;
+
+      const targetToken = data.tokens[targetIdx];
+      monitoredWordTag.textContent = `"${targetToken.text}"`;
+
+      const currentTrajectory = data.trajectories[targetToken.text];
+      const initialCoords = currentTrajectory[0];
+      const currentCoords = currentTrajectory[currentLayer];
+
+      monitorCoords.textContent = `[${currentCoords[0].toFixed(2)}, ${currentCoords[1].toFixed(2)}]`;
+
+      const dx = currentCoords[0] - initialCoords[0];
+      const dy = currentCoords[1] - initialCoords[1];
+      const shiftMagnitude = Math.hypot(dx, dy);
+      monitorShift.textContent = `${shiftMagnitude.toFixed(2)} units`;
+
+      // Render Attention Distribution Bars
+      const matrix = data.attentionMatrices[currentLayer];
+      const weights = matrix[targetIdx];
+
+      topAttnBars.innerHTML = "";
+      data.tokens.forEach((t, i) => {
+        const w = weights[i];
+        const barContainer = document.createElement("div");
+        barContainer.className = "space-y-0.5";
+
+        const barHeader = document.createElement("div");
+        barHeader.className = "flex justify-between text-[10px] text-slate-400";
+        barHeader.innerHTML = `<span>${t.text}</span> <span class="font-mono text-slate-200">${(w * 100).toFixed(0)}%</span>`;
+
+        const barBg = document.createElement("div");
+        barBg.className = "w-full h-1.5 bg-slate-900 rounded-full overflow-hidden border border-slate-800";
+
+        const barFill = document.createElement("div");
+        barFill.className = `h-full rounded-full transition-all duration-300 ${t.category === 'target' ? 'bg-target' : (t.category === 'geo' ? 'bg-geo' : (t.category === 'fin' ? 'bg-fin' : 'bg-brand-500'))}`;
+        barFill.style.width = `${w * 100}%`;
+
+        barBg.appendChild(barFill);
+        barContainer.appendChild(barHeader);
+        barContainer.appendChild(barBg);
+        topAttnBars.appendChild(barContainer);
+      });
+    }
+
+    // Start App on Window Load
+    window.addEventListener("load", init);
+  </script>
+</body>
+</html>
